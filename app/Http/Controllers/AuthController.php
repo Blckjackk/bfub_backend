@@ -7,6 +7,7 @@ use App\Models\Peserta;
 use App\Models\Token;
 use App\Models\CabangLomba;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class AuthController extends Controller
@@ -44,54 +45,68 @@ class AuthController extends Controller
     // 2. Register peserta
     public function register(Request $request)
     {
-        $request->validate([
-            'nama_lengkap' => 'required|string|max:100',
-            'nomor_pendaftaran' => 'required|string|max:50|unique:peserta',
-            'asal_sekolah' => 'required|string|max:100',
-            'email' => 'required|email|max:100|unique:peserta',
-            'password' => 'required|min:6',
-            'cabang_lomba_id' => 'required|exists:cabang_lomba,id'
-        ]);
-
-        // Ambil data cabang lomba untuk waktu ujian
-        $cabangLomba = CabangLomba::find($request->cabang_lomba_id);
-        
-        $peserta = Peserta::create([
-            'nama_lengkap' => $request->nama_lengkap,
-            'nomor_pendaftaran' => $request->nomor_pendaftaran,
-            'asal_sekolah' => $request->asal_sekolah,
-            'email' => $request->email,
-            'password_hash' => Hash::make($request->password),
-            'cabang_lomba_id' => $request->cabang_lomba_id,
-            'status_ujian' => 'belum_mulai',
-            'waktu_mulai' => now(), // Waktu registrasi sebagai placeholder
-            'waktu_selesai' => now() // Akan diupdate ketika ujian selesai
-        ]);
-
-        // Otomatis generate 5 token
-        $tokens = [];
-        
-        for ($i = 1; $i <= 5; $i++) {
-            $token = Token::create([
-                'kode_token' => strtoupper(substr($cabangLomba->nama_cabang, 0, 3)) . '-TOKEN-' . str_pad($peserta->id, 3, '0', STR_PAD_LEFT) . '-' . $i,
-                'peserta_id' => $peserta->id,
-                'cabang_lomba_id' => $request->cabang_lomba_id,
-                'tipe' => $i == 1 ? 'utama' : 'cadangan',
-                'status_token' => 'aktif',
-                'created_at' => now(),
-                'expired_at' => $cabangLomba->waktu_akhir_pengerjaan
+        try {
+            // Debug incoming request data
+            Log::info('Register request data:', ['data' => $request->all()]);
+            
+            $request->validate([
+                'nama_lengkap' => 'required|string|max:100',
+                'nomor_pendaftaran' => 'required|string|max:50|unique:peserta',
+                'asal_sekolah' => 'required|string|max:100',
+                'email' => 'required|email|max:100|unique:peserta',
+                'password' => 'required|min:6',
+                'cabang_lomba_id' => 'required|exists:cabang_lomba,id'
             ]);
-            $tokens[] = $token;
-        }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Registrasi berhasil. Anda mendapatkan 5 token.',
-            'data' => [
-                'peserta' => $peserta,
-                'tokens' => $tokens
-            ]
-        ], 201);
+            // Ambil data cabang lomba untuk waktu ujian
+            $cabangLomba = CabangLomba::find($request->cabang_lomba_id);
+            
+            $peserta = Peserta::create([
+                'nama_lengkap' => $request->nama_lengkap,
+                'nomor_pendaftaran' => $request->nomor_pendaftaran,
+                'asal_sekolah' => $request->asal_sekolah,
+                'email' => $request->email,
+                'password_hash' => Hash::make($request->password),
+                'cabang_lomba_id' => $request->cabang_lomba_id,
+                'status_ujian' => 'belum_mulai',
+                'waktu_mulai' => now(), // Waktu registrasi sebagai placeholder
+                'waktu_selesai' => now() // Akan diupdate ketika ujian selesai
+            ]);
+
+            // Otomatis generate 5 token
+            $tokens = [];
+            
+            for ($i = 1; $i <= 5; $i++) {
+                $token = Token::create([
+                    'kode_token' => strtoupper(substr($cabangLomba->nama_cabang, 0, 3)) . '-TOKEN-' . str_pad($peserta->id, 3, '0', STR_PAD_LEFT) . '-' . $i,
+                    'peserta_id' => $peserta->id,
+                    'cabang_lomba_id' => $request->cabang_lomba_id,
+                    'tipe' => $i == 1 ? 'utama' : 'cadangan',
+                    'status_token' => 'aktif',
+                    'created_at' => now(),
+                    'expired_at' => $cabangLomba->waktu_akhir_pengerjaan
+                ]);
+                $tokens[] = $token;
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Registrasi berhasil. Anda mendapatkan 5 token.',
+                'data' => [
+                    'peserta' => $peserta,
+                    'tokens' => $tokens
+                ]
+            ], 201);
+        } catch (\Exception $e) {
+            // Log the error
+            Log::error('Registration error: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat registrasi: ' . $e->getMessage(),
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     // 3. Verifikasi token peserta
