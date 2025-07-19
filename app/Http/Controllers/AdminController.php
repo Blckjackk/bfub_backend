@@ -6,8 +6,10 @@ use Illuminate\Http\Request;
 use App\Models\Peserta;
 use App\Models\Soal;
 use App\Models\SoalEssay;
+use App\Models\SoalIsianSingkat;
 use App\Models\Jawaban;
 use App\Models\JawabanEssay;
+use App\Models\JawabanIsianSingkat;
 use Illuminate\Support\Facades\Storage;
 
 class AdminController extends Controller
@@ -177,6 +179,30 @@ class AdminController extends Controller
             'success' => true,
             'message' => 'Daftar file upload',
             'data' => $fileList
+        ]);
+    }
+
+    // 28. Tambah soal isian singkat
+    public function tambahSoalIsianSingkat(Request $request)
+    {
+        $request->validate([
+            'cabang_lomba_id' => 'required|exists:cabang_lomba,id',
+            'pertanyaan_isian' => 'required|string',
+            'jawaban_benar' => 'required|string',
+            'nomor_soal' => 'required|integer'
+        ]);
+
+        $soal = SoalIsianSingkat::create([
+            'cabang_lomba_id' => $request->cabang_lomba_id,
+            'pertanyaan_isian' => $request->pertanyaan_isian,
+            'jawaban_benar' => $request->jawaban_benar,
+            'nomor_soal' => $request->nomor_soal
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Soal isian singkat berhasil ditambahkan',
+            'data' => $soal
         ]);
     }
 }

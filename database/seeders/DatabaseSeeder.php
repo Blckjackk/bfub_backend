@@ -22,6 +22,8 @@ class DatabaseSeeder extends Seeder
             JawabanSeeder::class,
             SoalEssaySeeder::class,
             JawabanEssaySeeder::class,
+            SoalIsianSingkatSeeder::class,
+            JawabanIsianSingkatSeeder::class,
         ]);
     }
 }
