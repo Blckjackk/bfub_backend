@@ -17,10 +17,13 @@ class AdminSeeder extends Seeder
             [
                 'nama_admin' => 'Super Admin',
                 'password_hash' => bcrypt('admin123'),
+                'role' => 'admin',
             ],
             [
                 'nama_admin' => 'Operator',
                 'password_hash' => bcrypt('operator123'),
+                'role' => 'admin',
+
             ],
         ]);
     }

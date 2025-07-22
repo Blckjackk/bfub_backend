@@ -16,7 +16,8 @@ return new class extends Migration
             $table->string('nama_lengkap', 100);
             $table->string('nomor_pendaftaran', 50);
             $table->string('asal_sekolah', 100);
-            $table->string('email', 100);
+            $table->string('username', 100);
+            $table->string('role', 50)->default('peserta'); // Default role is 'peserta'
             $table->string('password_hash', 255);
             $table->unsignedBigInteger('cabang_lomba_id');
             $table->string('status_ujian', 20);
