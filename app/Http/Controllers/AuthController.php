@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Peserta;
+use App\Models\Admin;
 use App\Models\Token;
 use App\Models\CabangLomba;
 use Illuminate\Support\Facades\Hash;
@@ -12,34 +13,60 @@ use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
-    // 1. Login peserta
+    // 1. Login untuk admin dan peserta
     public function login(Request $request)
     {
         $request->validate([
-            'email' => 'required|email',
+            'username' => 'required|string',
             'password' => 'required'
         ]);
 
-        $peserta = Peserta::where('email', $request->email)->first();
+        $username = $request->username;
+        $password = $request->password;
 
-        if (!$peserta || !Hash::check($request->password, $peserta->password_hash)) {
+        // Cek apakah login sebagai admin terlebih dahulu
+        $admin = Admin::where('username', $username)->first();
+        
+        if ($admin && Hash::check($password, $admin->password_hash)) {
+            // Login sebagai admin
+            $sessionToken = Str::random(60);
+            
             return response()->json([
-                'success' => false,
-                'message' => 'Email atau password salah'
-            ], 401);
+                'success' => true,
+                'message' => 'Login admin berhasil',
+                'data' => [
+                    'user' => $admin,
+                    'role' => 'admin',
+                    'redirect' => '/dashboard-admin',
+                    'session_token' => $sessionToken
+                ]
+            ]);
         }
 
-        // Generate session token (simple implementation)
-        $sessionToken = Str::random(60);
-        
+        // Jika bukan admin, cek sebagai peserta
+        $peserta = Peserta::where('username', $username)->first();
+
+        if ($peserta && Hash::check($password, $peserta->password_hash)) {
+            // Login sebagai peserta
+            $sessionToken = Str::random(60);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Login peserta berhasil',
+                'data' => [
+                    'user' => $peserta,
+                    'role' => 'peserta',
+                    'redirect' => '/dashboard-peserta',
+                    'session_token' => $sessionToken
+                ]
+            ]);
+        }
+
+        // Jika tidak ditemukan di kedua tabel
         return response()->json([
-            'success' => true,
-            'message' => 'Login berhasil',
-            'data' => [
-                'peserta' => $peserta,
-                'session_token' => $sessionToken
-            ]
-        ]);
+            'success' => false,
+            'message' => 'Username atau password salah'
+        ], 401);
     }
 
     // 2. Register peserta

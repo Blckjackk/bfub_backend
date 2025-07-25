@@ -15,12 +15,12 @@ class AdminSeeder extends Seeder
     {
         DB::table('admin')->insert([
             [
-                'nama_admin' => 'Super Admin',
+                'username' => 'admin',
                 'password_hash' => bcrypt('admin123'),
                 'role' => 'admin',
             ],
             [
-                'nama_admin' => 'Operator',
+                'username' => 'operator',
                 'password_hash' => bcrypt('operator123'),
                 'role' => 'admin',
 
