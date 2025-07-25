@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('nama_lengkap', 100);
             $table->string('nomor_pendaftaran', 50);
             $table->string('asal_sekolah', 100);
+            $table->string('kota_provinsi', 100)->nullable(); // Kolom baru untuk kota/provinsi
             $table->string('username', 100);
             $table->string('role', 50)->default('peserta'); // Default role is 'peserta'
             $table->string('password_hash', 255);

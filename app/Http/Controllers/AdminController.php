@@ -17,22 +17,69 @@ class AdminController extends Controller
     // 20. Daftar peserta (admin panel)
     public function getPeserta(Request $request)
     {
-        $query = Peserta::with('cabangLomba');
+        try {
+            $query = Peserta::with('cabangLomba');
 
-        // 21. Filter peserta by cabang
-        if ($request->has('cabang')) {
-            $query->whereHas('cabangLomba', function($q) use ($request) {
-                $q->where('nama_cabang', 'like', '%' . $request->cabang . '%');
-            });
+            // Search functionality
+            if ($request->has('search') && !empty($request->search)) {
+                $search = $request->search;
+                $query->where(function($q) use ($search) {
+                    $q->where('nama_lengkap', 'like', '%' . $search . '%')
+                      ->orWhere('nomor_pendaftaran', 'like', '%' . $search . '%')
+                      ->orWhere('username', 'like', '%' . $search . '%')
+                      ->orWhere('asal_sekolah', 'like', '%' . $search . '%');
+                });
+            }
+
+            // Filter by cabang lomba
+            if ($request->has('cabang') && !empty($request->cabang)) {
+                $query->whereHas('cabangLomba', function($q) use ($request) {
+                    $q->where('nama_cabang', 'like', '%' . $request->cabang . '%');
+                });
+            }
+
+            // Filter by status ujian
+            if ($request->has('status') && !empty($request->status)) {
+                $query->where('status_ujian', $request->status);
+            }
+
+            // Pagination
+            $perPage = $request->get('per_page', 10);
+            $peserta = $query->paginate($perPage);
+
+            // Get statistics
+            $stats = [
+                'total_peserta' => Peserta::count(),
+                'belum_mulai' => Peserta::where('status_ujian', 'belum_mulai')->count(),
+                'sedang_ujian' => Peserta::where('status_ujian', 'sedang_ujian')->count(),
+                'selesai' => Peserta::where('status_ujian', 'selesai')->count(),
+                'per_cabang' => Peserta::with('cabangLomba')
+                    ->get()
+                    ->groupBy('cabangLomba.nama_cabang')
+                    ->map->count()
+            ];
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Daftar peserta berhasil diambil',
+                'data' => $peserta->items(),
+                'pagination' => [
+                    'current_page' => $peserta->currentPage(),
+                    'last_page' => $peserta->lastPage(),
+                    'per_page' => $peserta->perPage(),
+                    'total' => $peserta->total(),
+                    'from' => $peserta->firstItem(),
+                    'to' => $peserta->lastItem()
+                ],
+                'stats' => $stats
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data peserta',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        $peserta = $query->get();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Daftar peserta',
-            'data' => $peserta
-        ]);
     }
 
     // 22. Tambah soal pilihan ganda

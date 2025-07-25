@@ -11,6 +11,7 @@ class Peserta extends Model
         'nama_lengkap',
         'nomor_pendaftaran',
         'asal_sekolah',
+        'kota_provinsi',
         'username',
         'role',
         'password_hash',
