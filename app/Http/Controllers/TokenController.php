@@ -118,4 +118,35 @@ class TokenController extends Controller
             ], 500);
         }
     }
+
+    public function ambilToken(Request $request)
+    {
+        $pesertaId = $request->input('peserta_id');
+
+        if (!$pesertaId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Peserta ID tidak ditemukan di request',
+            ], 400);
+        }
+
+        $peserta = Peserta::with('token')->find($pesertaId);
+
+        if (!$peserta) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Peserta tidak ditemukan',
+            ], 404);
+        }
+
+        $tokenPeserta = $peserta->token()->where('status_token', 'aktif')->first();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'kode_token' => $tokenPeserta->kode_token ?? null,
+                'jumlah_token' => $peserta->token->count(),
+            ]
+        ]);
+    }
 }
