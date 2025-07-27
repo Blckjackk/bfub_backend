@@ -11,6 +11,7 @@ use App\Models\Jawaban;
 use App\Models\JawabanEssay;
 use App\Models\JawabanIsianSingkat;
 use App\Models\CabangLomba;
+use App\Models\Token;
 use Illuminate\Support\Facades\Storage;
 
 class AdminController extends Controller
@@ -742,6 +743,247 @@ class AdminController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal menghapus hasil peserta',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // =================== TOKEN MANAGEMENT METHODS ===================
+
+    // Get all tokens with peserta and lomba info
+    public function getAllTokens(Request $request)
+    {
+        try {
+            $query = Token::with(['peserta', 'cabangLomba']);
+
+            // Search functionality
+            if ($request->has('search') && !empty($request->search)) {
+                $search = $request->search;
+                $query->whereHas('peserta', function($q) use ($search) {
+                    $q->where('nama_lengkap', 'like', '%' . $search . '%')
+                      ->orWhere('nomor_pendaftaran', 'like', '%' . $search . '%');
+                })->orWhere('kode_token', 'like', '%' . $search . '%');
+            }
+
+            // Filter by lomba
+            if ($request->has('lomba_id') && !empty($request->lomba_id)) {
+                $query->where('cabang_lomba_id', $request->lomba_id);
+            }
+
+            // Filter by status
+            if ($request->has('status') && !empty($request->status)) {
+                $query->where('status_token', $request->status);
+            }
+
+            $tokens = $query->orderBy('created_at', 'desc')->get();
+
+            $tokenData = $tokens->map(function($token) {
+                return [
+                    'id' => $token->id,
+                    'peserta' => $token->peserta ? $token->peserta->nama_lengkap : 'Belum Assigned',
+                    'nomor_pendaftaran' => $token->peserta ? $token->peserta->nomor_pendaftaran : '-',
+                    'kode_token' => $token->kode_token,
+                    'cabor' => $token->cabangLomba ? $token->cabangLomba->nama_cabang : '-',
+                    'tipe' => ucfirst($token->tipe),
+                    'status' => ucfirst($token->status_token),
+                    'created_at' => $token->created_at,
+                    'expired_at' => $token->expired_at,
+                    'peserta_id' => $token->peserta_id
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data token berhasil diambil',
+                'data' => $tokenData
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data token',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Get tokens by peserta ID
+    public function getTokensByPeserta($peserta_id)
+    {
+        try {
+            $tokens = Token::with(['cabangLomba'])
+                ->where('peserta_id', $peserta_id)
+                ->orderBy('tipe', 'desc') // utama first
+                ->get();
+
+            $tokenData = $tokens->map(function($token) {
+                return [
+                    'id' => $token->id,
+                    'kode_token' => $token->kode_token,
+                    'cabor' => $token->cabangLomba ? $token->cabangLomba->nama_cabang : '-',
+                    'tipe' => $token->tipe,
+                    'status' => $token->status_token,
+                    'created_at' => $token->created_at,
+                    'expired_at' => $token->expired_at,
+                    'can_be_primary' => $token->status_token === 'aktif' // Only aktif tokens can be primary
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Token peserta berhasil diambil',
+                'data' => $tokenData
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil token peserta',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Set token as primary (utama)
+    public function setTokenAsPrimary(Request $request, $token_id)
+    {
+        try {
+            $token = Token::findOrFail($token_id);
+            
+            // Check if token is active
+            if ($token->status_token !== 'aktif') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Hanya token aktif yang bisa dijadikan utama'
+                ], 400);
+            }
+
+            // Set all other tokens of this peserta to 'cadangan'
+            Token::where('peserta_id', $token->peserta_id)
+                ->where('id', '!=', $token_id)
+                ->update(['tipe' => 'cadangan']);
+
+            // Set this token as 'utama'
+            $token->update(['tipe' => 'utama']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Token berhasil dijadikan sebagai token utama'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengatur token utama',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Generate new tokens for peserta
+    public function generateTokens(Request $request)
+    {
+        $request->validate([
+            'peserta_id' => 'required|exists:peserta,id',
+            'cabang_lomba_id' => 'required|exists:cabang_lomba,id',
+            'jumlah_token' => 'required|integer|min:1|max:5'
+        ]);
+
+        try {
+            $peserta = Peserta::findOrFail($request->peserta_id);
+            $cabangLomba = CabangLomba::findOrFail($request->cabang_lomba_id);
+            
+            $tokens = [];
+            
+            for ($i = 0; $i < $request->jumlah_token; $i++) {
+                // Generate unique token code
+                $kodeToken = strtoupper($cabangLomba->nama_cabang) . '-' . 
+                           strtoupper($peserta->nomor_pendaftaran) . '-' . 
+                           sprintf('%03d', $i + 1);
+
+                // Check if this is the first token (will be primary)
+                $tipe = $i === 0 ? 'utama' : 'cadangan';
+                
+                $token = Token::create([
+                    'kode_token' => $kodeToken,
+                    'peserta_id' => $request->peserta_id,
+                    'cabang_lomba_id' => $request->cabang_lomba_id,
+                    'tipe' => $tipe,
+                    'status_token' => 'aktif',
+                    'created_at' => now(),
+                    'expired_at' => now()->addDays(30) // Token expires in 30 days
+                ]);
+
+                $tokens[] = $token;
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $request->jumlah_token . ' token berhasil dibuat',
+                'data' => $tokens
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal membuat token',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Delete token
+    public function deleteToken($id)
+    {
+        try {
+            $token = Token::findOrFail($id);
+            
+            // Check if token is being used
+            if ($token->status_token === 'digunakan') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Token yang sedang digunakan tidak bisa dihapus'
+                ], 400);
+            }
+
+            $token->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Token berhasil dihapus'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus token',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Mark tokens as expired (hangus)
+    public function markTokensAsExpired(Request $request)
+    {
+        $request->validate([
+            'token_ids' => 'required|array',
+            'token_ids.*' => 'exists:token,id'
+        ]);
+
+        try {
+            Token::whereIn('id', $request->token_ids)
+                ->where('status_token', '!=', 'digunakan') // Don't expire tokens in use
+                ->update(['status_token' => 'hangus']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Token berhasil ditandai sebagai hangus'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menandai token sebagai hangus',
                 'error' => $e->getMessage()
             ], 500);
         }

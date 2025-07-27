@@ -83,10 +83,13 @@ Route::post('/admin/peserta', [AdminController::class, 'createPeserta']); // Cre
 Route::put('/admin/peserta/{id}', [AdminController::class, 'updatePesertaById']); // Update peserta
 Route::delete('/admin/peserta/{id}', [AdminController::class, 'deletePeserta']); // Delete peserta
 
-// ================= TOKEN MANAGEMENT ROUTES (MISSING) =================
-Route::get('/admin/token', [TokenController::class, 'getAllTokens']); // Get all tokens
-Route::post('/admin/token/generate', [TokenController::class, 'generateTokens']); // Generate tokens
-Route::delete('/admin/token/{id}', [TokenController::class, 'deleteToken']); // Delete token
+// ================= TOKEN MANAGEMENT ROUTES =================
+Route::get('/admin/token', [AdminController::class, 'getAllTokens']); // Get all tokens
+Route::get('/admin/token/peserta/{peserta_id}', [AdminController::class, 'getTokensByPeserta']); // Get tokens by peserta
+Route::post('/admin/token/generate', [AdminController::class, 'generateTokens']); // Generate tokens
+Route::put('/admin/token/{id}/primary', [AdminController::class, 'setTokenAsPrimary']); // Set token as primary
+Route::delete('/admin/token/{id}', [AdminController::class, 'deleteToken']); // Delete token
+Route::patch('/admin/token/expire', [AdminController::class, 'markTokensAsExpired']); // Mark tokens as expired
 
 // ================= SOAL MANAGEMENT ROUTES (MISSING) =================
 Route::get('/admin/soal/pg', [AdminController::class, 'getSoalPG']); // Get all soal PG
