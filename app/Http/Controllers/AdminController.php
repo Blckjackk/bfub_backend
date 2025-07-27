@@ -88,7 +88,7 @@ class AdminController extends Controller
                     'waktu_mulai_pengerjaan' => $lomba->waktu_mulai_pengerjaan,
                     'waktu_akhir_pengerjaan' => $lomba->waktu_akhir_pengerjaan
                 ],
-                'soal_pg' => $lomba->soal->map(function($soal) {
+                'soal_pg' => $lomba->soal->sortBy('nomor_soal')->values()->map(function($soal) {
                     return [
                         'id' => $soal->id,
                         'nomor_soal' => $soal->nomor_soal,
@@ -103,14 +103,14 @@ class AdminController extends Controller
                         'deskripsi_soal' => $soal->deskripsi_soal
                     ];
                 }),
-                'soal_essay' => $lomba->soalEssay->map(function($soal) {
+                'soal_essay' => $lomba->soalEssay->sortBy('nomor_soal')->values()->map(function($soal) {
                     return [
                         'id' => $soal->id,
                         'nomor_soal' => $soal->nomor_soal,
                         'pertanyaan_essay' => $soal->pertanyaan_essay
                     ];
                 }),
-                'soal_isian_singkat' => $lomba->soalIsianSingkat->map(function($soal) {
+                'soal_isian_singkat' => $lomba->soalIsianSingkat->sortBy('nomor_soal')->values()->map(function($soal) {
                     return [
                         'id' => $soal->id,
                         'nomor_soal' => $soal->nomor_soal,
@@ -210,34 +210,47 @@ class AdminController extends Controller
         }
     }
 
-    // 22. Tambah soal pilihan ganda
+    // 86. Tambah soal PG dengan auto numbering
     public function tambahSoalPG(Request $request)
     {
         $request->validate([
             'cabang_lomba_id' => 'required|exists:cabang_lomba,id',
-            'nomor_soal' => 'required|integer',
-            'tipe_soal' => 'required|in:text,gambar',
-            'deskripsi_soal' => 'nullable|string',
             'pertanyaan' => 'required|string',
-            'media_soal' => 'nullable|string',
             'opsi_a' => 'required|string',
             'opsi_b' => 'required|string',
             'opsi_c' => 'required|string',
             'opsi_d' => 'required|string',
             'opsi_e' => 'required|string',
-            'jawaban_benar' => 'required|in:A,B,C,D,E'
+            'jawaban_benar' => 'required|in:A,B,C,D,E',
+            'tipe_soal' => 'string|in:text,gambar',
+            'deskripsi_soal' => 'nullable|string'
         ]);
 
-        $soal = Soal::create($request->all());
+        // Auto generate nomor soal
+        $nextNumber = Soal::where('cabang_lomba_id', $request->cabang_lomba_id)->max('nomor_soal') + 1;
+
+        $soal = Soal::create([
+            'cabang_lomba_id' => $request->cabang_lomba_id,
+            'nomor_soal' => $nextNumber,
+            'pertanyaan' => $request->pertanyaan,
+            'opsi_a' => $request->opsi_a,
+            'opsi_b' => $request->opsi_b,
+            'opsi_c' => $request->opsi_c,
+            'opsi_d' => $request->opsi_d,
+            'opsi_e' => $request->opsi_e,
+            'jawaban_benar' => $request->jawaban_benar,
+            'tipe_soal' => $request->tipe_soal ?? 'text',
+            'deskripsi_soal' => $request->deskripsi_soal
+        ]);
 
         return response()->json([
             'success' => true,
-            'message' => 'Soal pilihan ganda berhasil ditambahkan',
+            'message' => 'Soal PG berhasil ditambahkan',
             'data' => $soal
-        ], 201);
+        ]);
     }
 
-    // 23. Tambah soal essay
+        // 113. Tambah soal Essay dengan auto numbering
     public function tambahSoalEssay(Request $request)
     {
         $request->validate([
@@ -245,13 +258,20 @@ class AdminController extends Controller
             'pertanyaan_essay' => 'required|string'
         ]);
 
-        $soalEssay = SoalEssay::create($request->all());
+        // Auto generate nomor soal
+        $nextNumber = SoalEssay::where('cabang_lomba_id', $request->cabang_lomba_id)->max('nomor_soal') + 1;
+
+        $soal = SoalEssay::create([
+            'cabang_lomba_id' => $request->cabang_lomba_id,
+            'nomor_soal' => $nextNumber,
+            'pertanyaan_essay' => $request->pertanyaan_essay
+        ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Soal essay berhasil ditambahkan',
-            'data' => $soalEssay
-        ], 201);
+            'data' => $soal
+        ]);
     }
 
     // 24. Lihat semua jawaban peserta
@@ -357,21 +377,23 @@ class AdminController extends Controller
         ]);
     }
 
-    // 28. Tambah soal isian singkat
+    // 28. Tambah soal isian singkat dengan auto numbering
     public function tambahSoalIsianSingkat(Request $request)
     {
         $request->validate([
             'cabang_lomba_id' => 'required|exists:cabang_lomba,id',
             'pertanyaan_isian' => 'required|string',
-            'jawaban_benar' => 'required|string',
-            'nomor_soal' => 'required|integer'
+            'jawaban_benar' => 'required|string'
         ]);
+
+        // Auto generate nomor soal
+        $nextNumber = SoalIsianSingkat::where('cabang_lomba_id', $request->cabang_lomba_id)->max('nomor_soal') + 1;
 
         $soal = SoalIsianSingkat::create([
             'cabang_lomba_id' => $request->cabang_lomba_id,
+            'nomor_soal' => $nextNumber,
             'pertanyaan_isian' => $request->pertanyaan_isian,
-            'jawaban_benar' => $request->jawaban_benar,
-            'nomor_soal' => $request->nomor_soal
+            'jawaban_benar' => $request->jawaban_benar
         ]);
 
         return response()->json([
@@ -379,5 +401,349 @@ class AdminController extends Controller
             'message' => 'Soal isian singkat berhasil ditambahkan',
             'data' => $soal
         ]);
+    }
+
+    // Delete soal PG dengan auto re-numbering
+    public function deleteSoalPG($id)
+    {
+        try {
+            $soal = Soal::findOrFail($id);
+            $cabangLombaId = $soal->cabang_lomba_id;
+            $deletedNomor = $soal->nomor_soal;
+
+            // Delete soal
+            $soal->delete();
+
+            // Re-number soal yang nomornya lebih besar
+            Soal::where('cabang_lomba_id', $cabangLombaId)
+                ->where('nomor_soal', '>', $deletedNomor)
+                ->decrement('nomor_soal');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Soal PG berhasil dihapus dan nomor soal telah diperbarui'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus soal PG',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Delete soal Essay dengan auto re-numbering
+    public function deleteSoalEssay($id)
+    {
+        try {
+            $soal = SoalEssay::findOrFail($id);
+            $cabangLombaId = $soal->cabang_lomba_id;
+            $deletedNomor = $soal->nomor_soal;
+
+            // Delete soal
+            $soal->delete();
+
+            // Re-number soal yang nomornya lebih besar
+            SoalEssay::where('cabang_lomba_id', $cabangLombaId)
+                ->where('nomor_soal', '>', $deletedNomor)
+                ->decrement('nomor_soal');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Soal Essay berhasil dihapus dan nomor soal telah diperbarui'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus soal Essay',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Delete soal Isian Singkat dengan auto re-numbering
+    public function deleteSoalIsianSingkat($id)
+    {
+        try {
+            $soal = SoalIsianSingkat::findOrFail($id);
+            $cabangLombaId = $soal->cabang_lomba_id;
+            $deletedNomor = $soal->nomor_soal;
+
+            // Delete soal
+            $soal->delete();
+
+            // Re-number soal yang nomornya lebih besar
+            SoalIsianSingkat::where('cabang_lomba_id', $cabangLombaId)
+                ->where('nomor_soal', '>', $deletedNomor)
+                ->decrement('nomor_soal');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Soal Isian Singkat berhasil dihapus dan nomor soal telah diperbarui'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus soal Isian Singkat',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Get hasil lomba - peserta yang sudah selesai ujian
+    public function getHasilLomba(Request $request)
+    {
+        try {
+            $query = Peserta::with(['cabangLomba', 'jawaban.soal', 'jawabanEssay.soalEssay', 'jawabanIsianSingkat.soalIsianSingkat'])
+                ->where('status_ujian', 'selesai');
+
+            // Filter by lomba if specified
+            if ($request->has('lomba_id') && !empty($request->lomba_id)) {
+                $query->where('cabang_lomba_id', $request->lomba_id);
+            }
+
+            // Search functionality
+            if ($request->has('search') && !empty($request->search)) {
+                $search = $request->search;
+                $query->where(function($q) use ($search) {
+                    $q->where('nama_lengkap', 'like', '%' . $search . '%')
+                      ->orWhere('nomor_pendaftaran', 'like', '%' . $search . '%');
+                });
+            }
+
+            $peserta = $query->get();
+
+            $hasilData = $peserta->map(function($peserta) {
+                // Hitung statistik jawaban
+                $jawabanPG = $peserta->jawaban;
+                $jawabanBenar = $jawabanPG->where('benar', true)->count();
+                $jawabanSalah = $jawabanPG->where('benar', false)->count();
+                $totalSoalPG = $peserta->cabangLomba->soal->count();
+                $totalSoalEssay = $peserta->cabangLomba->soalEssay->count();
+                $totalSoalIsian = $peserta->cabangLomba->soalIsianSingkat->count();
+                $totalSoal = $totalSoalPG + $totalSoalEssay + $totalSoalIsian;
+                $soalTerjawab = $jawabanPG->count() + $peserta->jawabanEssay->count() + $peserta->jawabanIsianSingkat->count();
+
+                return [
+                    'id' => $peserta->id,
+                    'noPendaftaran' => $peserta->nomor_pendaftaran,
+                    'nama' => $peserta->nama_lengkap,
+                    'cabor' => $peserta->cabangLomba->nama_cabang,
+                    'mulai' => $peserta->waktu_mulai ? date('H:i', strtotime($peserta->waktu_mulai)) : '00:00',
+                    'selesai' => $peserta->waktu_selesai ? date('H:i', strtotime($peserta->waktu_selesai)) : '00:00',
+                    'jumlahSoal' => $totalSoal,
+                    'soalTerjawab' => $soalTerjawab,
+                    'soalBenar' => $jawabanBenar,
+                    'soalSalah' => $jawabanSalah,
+                    'nilai' => round($peserta->nilai_total ?? 0),
+                    'asal_sekolah' => $peserta->asal_sekolah,
+                    'waktu_pengerjaan' => $peserta->waktu_pengerjaan_total,
+                    'isChecked' => false
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data hasil lomba berhasil diambil',
+                'data' => $hasilData
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data hasil lomba',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Get detail hasil lomba by peserta ID
+    public function getHasilPeserta($id)
+    {
+        try {
+            $peserta = Peserta::with([
+                'cabangLomba.soal',
+                'cabangLomba.soalEssay', 
+                'cabangLomba.soalIsianSingkat',
+                'jawaban.soal',
+                'jawabanEssay.soalEssay',
+                'jawabanIsianSingkat.soalIsianSingkat'
+            ])->findOrFail($id);
+
+            if ($peserta->status_ujian !== 'selesai') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Peserta belum menyelesaikan ujian'
+                ], 400);
+            }
+
+            // Data peserta
+            $detailPeserta = [
+                'id' => $peserta->id,
+                'nama_lengkap' => $peserta->nama_lengkap,
+                'nomor_pendaftaran' => $peserta->nomor_pendaftaran,
+                'asal_sekolah' => $peserta->asal_sekolah,
+                'cabang_lomba' => $peserta->cabangLomba->nama_cabang,
+                'waktu_mulai' => $peserta->waktu_mulai,
+                'waktu_selesai' => $peserta->waktu_selesai,
+                'waktu_pengerjaan_total' => $peserta->waktu_pengerjaan_total,
+                'nilai_total' => $peserta->nilai_total,
+                'status_ujian' => $peserta->status_ujian
+            ];
+
+            // Jawaban PG dengan detail soal
+            $jawabanPG = $peserta->jawaban->map(function($jawaban) {
+                return [
+                    'nomor_soal' => $jawaban->soal->nomor_soal,
+                    'pertanyaan' => $jawaban->soal->pertanyaan,
+                    'pilihan_a' => $jawaban->soal->pilihan_a,
+                    'pilihan_b' => $jawaban->soal->pilihan_b,
+                    'pilihan_c' => $jawaban->soal->pilihan_c,
+                    'pilihan_d' => $jawaban->soal->pilihan_d,
+                    'jawaban_benar' => $jawaban->soal->jawaban_benar,
+                    'jawaban_peserta' => $jawaban->jawaban_dipilih,
+                    'benar' => $jawaban->benar,
+                    'waktu_jawab' => $jawaban->waktu_jawab
+                ];
+            })->sortBy('nomor_soal');
+
+            // Jawaban Essay dengan detail soal
+            $jawabanEssay = $peserta->jawabanEssay->map(function($jawaban) {
+                return [
+                    'nomor_soal' => $jawaban->soalEssay->nomor_soal,
+                    'pertanyaan' => $jawaban->soalEssay->pertanyaan_essay,
+                    'jawaban_peserta' => $jawaban->jawaban_text,
+                    'file_path' => $jawaban->file_path,
+                    'file_name' => $jawaban->file_name,
+                    'waktu_jawab' => $jawaban->waktu_jawab
+                ];
+            })->sortBy('nomor_soal');
+
+            // Jawaban Isian Singkat dengan detail soal
+            $jawabanIsianSingkat = $peserta->jawabanIsianSingkat->map(function($jawaban) {
+                return [
+                    'nomor_soal' => $jawaban->soalIsianSingkat->nomor_soal,
+                    'pertanyaan' => $jawaban->soalIsianSingkat->pertanyaan_isian,
+                    'jawaban_peserta' => $jawaban->jawaban_text,
+                    'jawaban_benar' => $jawaban->soalIsianSingkat->jawaban_benar,
+                    'benar' => $jawaban->benar ?? false,
+                    'waktu_jawab' => $jawaban->waktu_jawab
+                ];
+            })->sortBy('nomor_soal');
+
+            // Statistik
+            $statistik = [
+                'total_soal_pg' => $peserta->cabangLomba->soal->count(),
+                'total_soal_essay' => $peserta->cabangLomba->soalEssay->count(),
+                'total_soal_isian' => $peserta->cabangLomba->soalIsianSingkat->count(),
+                'jawaban_pg_benar' => $peserta->jawaban->where('benar', true)->count(),
+                'jawaban_pg_salah' => $peserta->jawaban->where('benar', false)->count(),
+                'jawaban_essay_count' => $peserta->jawabanEssay->count(),
+                'jawaban_isian_count' => $peserta->jawabanIsianSingkat->count(),
+                'persentase_ketepatan' => $peserta->jawaban->count() > 0 
+                    ? round(($peserta->jawaban->where('benar', true)->count() / $peserta->jawaban->count()) * 100, 2)
+                    : 0
+            ];
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Detail hasil peserta berhasil diambil',
+                'data' => [
+                    'peserta' => $detailPeserta,
+                    'jawaban_pg' => $jawabanPG,
+                    'jawaban_essay' => $jawabanEssay,
+                    'jawaban_isian_singkat' => $jawabanIsianSingkat,
+                    'statistik' => $statistik
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil detail hasil peserta',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Get ranking peserta berdasarkan nilai
+    public function getRanking(Request $request)
+    {
+        try {
+            $query = Peserta::with('cabangLomba')
+                ->where('status_ujian', 'selesai')
+                ->whereNotNull('nilai_total')
+                ->orderBy('nilai_total', 'desc');
+
+            // Filter by lomba if specified
+            if ($request->has('lomba_id') && !empty($request->lomba_id)) {
+                $query->where('cabang_lomba_id', $request->lomba_id);
+            }
+
+            $peserta = $query->get();
+
+            $ranking = $peserta->map(function($peserta, $index) {
+                return [
+                    'ranking' => $index + 1,
+                    'id' => $peserta->id,
+                    'nama_lengkap' => $peserta->nama_lengkap,
+                    'nomor_pendaftaran' => $peserta->nomor_pendaftaran,
+                    'asal_sekolah' => $peserta->asal_sekolah,
+                    'cabang_lomba' => $peserta->cabangLomba->nama_cabang,
+                    'nilai_total' => $peserta->nilai_total,
+                    'waktu_pengerjaan' => $peserta->waktu_pengerjaan_total
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Ranking peserta berhasil diambil',
+                'data' => $ranking
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil ranking peserta',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Delete hasil peserta (soft delete)
+    public function deleteHasilPeserta($id)
+    {
+        try {
+            $peserta = Peserta::findOrFail($id);
+            
+            // Reset status ujian dan nilai
+            $peserta->update([
+                'status_ujian' => 'belum_mulai',
+                'nilai_total' => null,
+                'waktu_mulai' => null,
+                'waktu_selesai' => null,
+                'waktu_pengerjaan_total' => null
+            ]);
+
+            // Hapus semua jawaban peserta
+            $peserta->jawaban()->delete();
+            $peserta->jawabanEssay()->delete();
+            $peserta->jawabanIsianSingkat()->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Hasil peserta berhasil dihapus dan direset'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus hasil peserta',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

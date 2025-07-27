@@ -9,6 +9,7 @@ class SoalEssay extends Model
     protected $table = 'soal_essay';
     protected $fillable = [
         'cabang_lomba_id',
+        'nomor_soal',
         'pertanyaan_essay'
     ];
     public $timestamps = false;

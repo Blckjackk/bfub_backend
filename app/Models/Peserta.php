@@ -42,6 +42,12 @@ class Peserta extends Model
         return $this->hasMany(JawabanEssay::class, 'peserta_id');
     }
 
+    // Relasi ke JawabanIsianSingkat
+    public function jawabanIsianSingkat()
+    {
+        return $this->hasMany(JawabanIsianSingkat::class, 'peserta_id');
+    }
+
     // Relasi ke Token
     public function token()
     {

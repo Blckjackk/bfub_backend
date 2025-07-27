@@ -99,10 +99,12 @@ Route::delete('/admin/soal/pg/{id}', [AdminController::class, 'deleteSoalPG']); 
 Route::delete('/admin/soal/essay/{id}', [AdminController::class, 'deleteSoalEssay']); // Delete soal essay
 Route::delete('/admin/soal/isian-singkat/{id}', [AdminController::class, 'deleteSoalIsianSingkat']); // Delete soal isian singkat
 
-// ================= HASIL & NILAI ROUTES (MISSING) =================
+// ================= HASIL & NILAI ROUTES =================
+Route::get('/admin/hasil/lomba', [AdminController::class, 'getHasilLomba']); // Get hasil lomba 
 Route::get('/admin/hasil/peserta/{id}', [AdminController::class, 'getHasilPeserta']); // Get hasil by peserta ID
+Route::delete('/admin/hasil/peserta/{id}', [AdminController::class, 'deleteHasilPeserta']); // Delete hasil peserta
 Route::get('/peserta/hasil', [PesertaController::class, 'getHasilLomba']); // Get hasil lomba peserta
-Route::get('/admin/hasil/lomba/{id}', [AdminController::class, 'getHasilLomba']); // Get hasil by lomba ID
+Route::get('/admin/hasil/lomba/{id}', [AdminController::class, 'getHasilLomba']); // Get hasil by lomba ID (with filter)
 Route::get('/admin/ranking', [AdminController::class, 'getRanking']); // Get ranking peserta
 
 // ================= FILE IMPORT ROUTES (MISSING) =================

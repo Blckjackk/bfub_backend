@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('soal_essay', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('cabang_lomba_id');
+            $table->integer('nomor_soal');
             $table->text('pertanyaan_essay');
             
             // Foreign key constraint

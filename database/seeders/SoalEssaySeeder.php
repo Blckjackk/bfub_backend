@@ -16,11 +16,28 @@ class SoalEssaySeeder extends Seeder
         DB::table('soal_essay')->insert([
             [
                 'cabang_lomba_id' => 1,
-                'pertanyaan_essay' => 'Jelaskan konsep limit dalam matematika!',
+                'nomor_soal' => 1,
+                'pertanyaan_essay' => 'Jelaskan konsep limit dalam matematika dan berikan contoh penerapannya!',
+            ],
+            [
+                'cabang_lomba_id' => 1,
+                'nomor_soal' => 2,
+                'pertanyaan_essay' => 'Uraikan langkah-langkah menyelesaikan integral tak tentu!',
+            ],
+            [
+                'cabang_lomba_id' => 1,
+                'nomor_soal' => 3,
+                'pertanyaan_essay' => 'Jelaskan hubungan antara turunan dan integral dalam kalkulus!',
             ],
             [
                 'cabang_lomba_id' => 2,
-                'pertanyaan_essay' => 'Jelaskan hukum Newton pertama!',
+                'nomor_soal' => 1,
+                'pertanyaan_essay' => 'Jelaskan hukum Newton pertama dan berikan contoh penerapannya dalam kehidupan sehari-hari!',
+            ],
+            [
+                'cabang_lomba_id' => 2,
+                'nomor_soal' => 2,
+                'pertanyaan_essay' => 'Uraikan konsep energi kinetik dan energi potensial beserta rumusnya!',
             ],
         ]);
     }
