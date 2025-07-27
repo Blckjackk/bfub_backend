@@ -10,10 +10,138 @@ use App\Models\SoalIsianSingkat;
 use App\Models\Jawaban;
 use App\Models\JawabanEssay;
 use App\Models\JawabanIsianSingkat;
+use App\Models\CabangLomba;
 use Illuminate\Support\Facades\Storage;
 
 class AdminController extends Controller
 {
+    // 1. Get all lomba data untuk halaman manajemen lomba
+    public function getLomba(Request $request)
+    {
+        try {
+            $query = CabangLomba::with(['soal', 'soalEssay', 'soalIsianSingkat', 'peserta']);
+
+            // Search functionality
+            if ($request->has('search') && !empty($request->search)) {
+                $search = $request->search;
+                $query->where(function($q) use ($search) {
+                    $q->where('nama_cabang', 'like', '%' . $search . '%')
+                      ->orWhere('deskripsi_lomba', 'like', '%' . $search . '%');
+                });
+            }
+
+            // Get all lomba with statistics
+            $lomba = $query->get();
+
+            // Calculate statistics for each lomba
+            $lombaData = $lomba->map(function($item) {
+                return [
+                    'id' => $item->id,
+                    'nama_cabang' => $item->nama_cabang,
+                    'deskripsi_lomba' => $item->deskripsi_lomba,
+                    'waktu_mulai_pengerjaan' => $item->waktu_mulai_pengerjaan,
+                    'waktu_akhir_pengerjaan' => $item->waktu_akhir_pengerjaan,
+                    'total_soal_pg' => $item->soal->count(),
+                    'total_soal_essay' => $item->soalEssay->count(),
+                    'total_soal_isian' => $item->soalIsianSingkat->count(),
+                    'total_peserta' => $item->peserta->count(),
+                    'created_at' => $item->created_at,
+                    'updated_at' => $item->updated_at
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data lomba berhasil diambil',
+                'data' => $lombaData,
+                'total' => $lombaData->count()
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengambil data lomba',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // 2. Get lomba by ID dengan detail soal
+    public function getLombaById($id)
+    {
+        try {
+            $lomba = CabangLomba::with(['soal', 'soalEssay', 'soalIsianSingkat', 'peserta'])->find($id);
+
+            if (!$lomba) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Lomba tidak ditemukan'
+                ], 404);
+            }
+
+            // Format data dengan detail soal
+            $data = [
+                'lomba' => [
+                    'id' => $lomba->id,
+                    'nama_cabang' => $lomba->nama_cabang,
+                    'deskripsi_lomba' => $lomba->deskripsi_lomba,
+                    'waktu_mulai_pengerjaan' => $lomba->waktu_mulai_pengerjaan,
+                    'waktu_akhir_pengerjaan' => $lomba->waktu_akhir_pengerjaan
+                ],
+                'soal_pg' => $lomba->soal->map(function($soal) {
+                    return [
+                        'id' => $soal->id,
+                        'nomor_soal' => $soal->nomor_soal,
+                        'pertanyaan' => $soal->pertanyaan,
+                        'opsi_a' => $soal->opsi_a,
+                        'opsi_b' => $soal->opsi_b,
+                        'opsi_c' => $soal->opsi_c,
+                        'opsi_d' => $soal->opsi_d,
+                        'opsi_e' => $soal->opsi_e,
+                        'jawaban_benar' => $soal->jawaban_benar,
+                        'tipe_soal' => $soal->tipe_soal,
+                        'deskripsi_soal' => $soal->deskripsi_soal
+                    ];
+                }),
+                'soal_essay' => $lomba->soalEssay->map(function($soal) {
+                    return [
+                        'id' => $soal->id,
+                        'nomor_soal' => $soal->nomor_soal,
+                        'pertanyaan_essay' => $soal->pertanyaan_essay
+                    ];
+                }),
+                'soal_isian_singkat' => $lomba->soalIsianSingkat->map(function($soal) {
+                    return [
+                        'id' => $soal->id,
+                        'nomor_soal' => $soal->nomor_soal,
+                        'pertanyaan_isian' => $soal->pertanyaan_isian,
+                        'jawaban_benar' => $soal->jawaban_benar
+                    ];
+                }),
+                'stats' => [
+                    'total_soal_pg' => $lomba->soal->count(),
+                    'total_soal_essay' => $lomba->soalEssay->count(),
+                    'total_soal_isian' => $lomba->soalIsianSingkat->count(),
+                    'total_semua_soal' => $lomba->soal->count() + $lomba->soalEssay->count() + $lomba->soalIsianSingkat->count(),
+                    'total_peserta' => $lomba->peserta->count()
+                ]
+            ];
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Detail lomba berhasil diambil',
+                'data' => $data
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengambil detail lomba',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     // 20. Daftar peserta (admin panel)
     public function getPeserta(Request $request)
     {

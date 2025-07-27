@@ -13,7 +13,7 @@ class CabangLomba extends Model
         'waktu_mulai_pengerjaan',
         'waktu_akhir_pengerjaan'
     ];
-    public $timestamps = false;
+    public $timestamps = true; // Enable timestamps
 
     // Relasi ke Peserta
     public function peserta()
@@ -31,5 +31,11 @@ class CabangLomba extends Model
     public function soalEssay()
     {
         return $this->hasMany(SoalEssay::class, 'cabang_lomba_id');
+    }
+
+    // Relasi ke SoalIsianSingkat
+    public function soalIsianSingkat()
+    {
+        return $this->hasMany(SoalIsianSingkat::class, 'cabang_lomba_id');
     }
 }
