@@ -80,7 +80,8 @@ class AuthController extends Controller
                 'nama_lengkap' => 'required|string|max:100',
                 'nomor_pendaftaran' => 'required|string|max:50|unique:peserta',
                 'asal_sekolah' => 'required|string|max:100',
-                'email' => 'required|email|max:100|unique:peserta',
+                'kota_provinsi' => 'required|string|max:100',
+                'username' => 'required|string|min:3|max:50|unique:peserta',
                 'password' => 'required|min:6',
                 'cabang_lomba_id' => 'required|exists:cabang_lomba,id'
             ]);
@@ -92,12 +93,12 @@ class AuthController extends Controller
                 'nama_lengkap' => $request->nama_lengkap,
                 'nomor_pendaftaran' => $request->nomor_pendaftaran,
                 'asal_sekolah' => $request->asal_sekolah,
-                'email' => $request->email,
+                'kota_provinsi' => $request->kota_provinsi,
+                'username' => $request->username,
+                'role' => 'peserta',
                 'password_hash' => Hash::make($request->password),
                 'cabang_lomba_id' => $request->cabang_lomba_id,
-                'status_ujian' => 'belum_mulai',
-                'waktu_mulai' => now(), // Waktu registrasi sebagai placeholder
-                'waktu_selesai' => now() // Akan diupdate ketika ujian selesai
+                'status_ujian' => 'belum_mulai'
             ]);
 
             // Otomatis generate 5 token
@@ -111,7 +112,7 @@ class AuthController extends Controller
                     'tipe' => $i == 1 ? 'utama' : 'cadangan',
                     'status_token' => 'aktif',
                     'created_at' => now(),
-                    'expired_at' => $cabangLomba->waktu_akhir_pengerjaan
+                    'expired_at' => $cabangLomba->waktu_akhir_pengerjaan ?? now()->addDays(30)
                 ]);
                 $tokens[] = $token;
             }

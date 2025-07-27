@@ -22,8 +22,8 @@ return new class extends Migration
             $table->string('password_hash', 255);
             $table->unsignedBigInteger('cabang_lomba_id');
             $table->string('status_ujian', 20);
-            $table->dateTime('waktu_mulai');
-            $table->dateTime('waktu_selesai');
+            $table->dateTime('waktu_mulai')->nullable();
+            $table->dateTime('waktu_selesai')->nullable();
             $table->float('nilai_total')->nullable();
             $table->integer('waktu_pengerjaan_total')->nullable();
     
