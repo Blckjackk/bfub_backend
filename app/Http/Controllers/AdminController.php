@@ -988,4 +988,114 @@ class AdminController extends Controller
             ], 500);
         }
     }
+
+    // Get tokens grouped by peserta
+    public function getTokensGroupedByPeserta(Request $request)
+    {
+        try {
+            $query = Token::with(['peserta', 'cabangLomba']);
+
+            // Search functionality
+            if ($request->has('search') && !empty($request->search)) {
+                $search = $request->search;
+                $query->whereHas('peserta', function($q) use ($search) {
+                    $q->where('nama_lengkap', 'like', '%' . $search . '%')
+                      ->orWhere('nomor_pendaftaran', 'like', '%' . $search . '%');
+                });
+            }
+
+            // Filter by lomba
+            if ($request->has('lomba_id') && !empty($request->lomba_id)) {
+                $query->where('cabang_lomba_id', $request->lomba_id);
+            }
+
+            // Filter by status
+            if ($request->has('status') && !empty($request->status)) {
+                $query->where('status_token', $request->status);
+            }
+
+            $tokens = $query->orderBy('created_at', 'desc')->get();
+
+            // Group tokens by peserta
+            $groupedTokens = $tokens->groupBy('peserta_id')->map(function($pesertaTokens) {
+                $firstToken = $pesertaTokens->first();
+                $utamaToken = $pesertaTokens->where('tipe', 'utama')->first();
+                $cadanganTokens = $pesertaTokens->where('tipe', 'cadangan');
+                
+                return [
+                    'peserta_id' => $firstToken->peserta_id,
+                    'peserta' => $firstToken->peserta ? $firstToken->peserta->nama_lengkap : 'Belum Assigned',
+                    'nomor_pendaftaran' => $firstToken->peserta ? $firstToken->peserta->nomor_pendaftaran : '-',
+                    'cabor' => $firstToken->cabangLomba ? $firstToken->cabangLomba->nama_cabang : '-',
+                    'cabang_lomba_id' => $firstToken->cabang_lomba_id,
+                    'token_utama' => $utamaToken ? [
+                        'id' => $utamaToken->id,
+                        'kode_token' => $utamaToken->kode_token,
+                        'status' => ucfirst($utamaToken->status_token),
+                        'created_at' => $utamaToken->created_at,
+                        'expired_at' => $utamaToken->expired_at,
+                    ] : null,
+                    'token_cadangan' => $cadanganTokens->map(function($token) {
+                        return [
+                            'id' => $token->id,
+                            'kode_token' => $token->kode_token,
+                            'status' => ucfirst($token->status_token),
+                            'created_at' => $token->created_at,
+                            'expired_at' => $token->expired_at,
+                        ];
+                    })->values(),
+                    'total_tokens' => $pesertaTokens->count(),
+                    'aktif_tokens' => $pesertaTokens->where('status_token', 'aktif')->count(),
+                    'digunakan_tokens' => $pesertaTokens->where('status_token', 'digunakan')->count(),
+                    'hangus_tokens' => $pesertaTokens->where('status_token', 'hangus')->count(),
+                ];
+            })->values();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data token berhasil diambil',
+                'data' => $groupedTokens
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data token',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Update token status
+    public function updateTokenStatus(Request $request, $token_id)
+    {
+        $request->validate([
+            'status' => 'required|in:aktif,digunakan,hangus'
+        ]);
+
+        try {
+            $token = Token::findOrFail($token_id);
+            
+            $token->update([
+                'status_token' => $request->status
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Status token berhasil diubah',
+                'data' => [
+                    'id' => $token->id,
+                    'kode_token' => $token->kode_token,
+                    'status' => ucfirst($token->status_token)
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengubah status token',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

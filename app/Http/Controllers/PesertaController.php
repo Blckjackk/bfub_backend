@@ -55,6 +55,52 @@ class PesertaController extends Controller
         ]);
     }
 
+    // Get profile peserta by ID dengan cabang lomba
+    public function getProfile($id)
+    {
+        try {
+            $peserta = Peserta::with('cabangLomba')->find($id);
+
+            if (!$peserta) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Peserta tidak ditemukan'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data profile peserta berhasil diambil',
+                'data' => [
+                    'id' => $peserta->id,
+                    'nama_lengkap' => $peserta->nama_lengkap,
+                    'nomor_pendaftaran' => $peserta->nomor_pendaftaran,
+                    'asal_sekolah' => $peserta->asal_sekolah,
+                    'kota_provinsi' => $peserta->kota_provinsi,
+                    'username' => $peserta->username,
+                    'status_ujian' => $peserta->status_ujian,
+                    'waktu_mulai' => $peserta->waktu_mulai,
+                    'waktu_selesai' => $peserta->waktu_selesai,
+                    'nilai_total' => $peserta->nilai_total,
+                    'cabang_lomba' => $peserta->cabangLomba ? [
+                        'id' => $peserta->cabangLomba->id,
+                        'nama_cabang' => $peserta->cabangLomba->nama_cabang,
+                        'deskripsi' => $peserta->cabangLomba->deskripsi_lomba,
+                        'waktu_mulai_pengerjaan' => $peserta->cabangLomba->waktu_mulai_pengerjaan,
+                        'waktu_akhir_pengerjaan' => $peserta->cabangLomba->waktu_akhir_pengerjaan,
+                    ] : null
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengambil data peserta',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     // 7. Status ujian peserta
     public function statusUjian(Request $request)
     {

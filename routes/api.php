@@ -25,6 +25,7 @@ Route::post('/auth/request-token-ulang', [AuthController::class, 'requestTokenUl
 
 // ================= PESERTA ROUTES =================
 Route::get('/peserta/me', [PesertaController::class, 'me']);
+Route::get('/peserta/profile/{id}', [PesertaController::class, 'getProfile']);
 Route::put('/peserta/update', [PesertaController::class, 'update']);
 Route::get('/peserta/status-ujian', [PesertaController::class, 'statusUjian']);
 
@@ -85,9 +86,11 @@ Route::delete('/admin/peserta/{id}', [AdminController::class, 'deletePeserta']);
 
 // ================= TOKEN MANAGEMENT ROUTES =================
 Route::get('/admin/token', [AdminController::class, 'getAllTokens']); // Get all tokens
+Route::get('/admin/token/grouped', [AdminController::class, 'getTokensGroupedByPeserta']); // Get tokens grouped by peserta
 Route::get('/admin/token/peserta/{peserta_id}', [AdminController::class, 'getTokensByPeserta']); // Get tokens by peserta
 Route::post('/admin/token/generate', [AdminController::class, 'generateTokens']); // Generate tokens
 Route::put('/admin/token/{id}/primary', [AdminController::class, 'setTokenAsPrimary']); // Set token as primary
+Route::put('/admin/token/{id}/status', [AdminController::class, 'updateTokenStatus']); // Update token status
 Route::delete('/admin/token/{id}', [AdminController::class, 'deleteToken']); // Delete token
 Route::patch('/admin/token/expire', [AdminController::class, 'markTokensAsExpired']); // Mark tokens as expired
 
