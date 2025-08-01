@@ -28,6 +28,7 @@ Route::get('/peserta/me', [PesertaController::class, 'me']);
 Route::get('/peserta/profile/{id}', [PesertaController::class, 'getProfile']);
 Route::put('/peserta/update', [PesertaController::class, 'update']);
 Route::get('/peserta/status-ujian', [PesertaController::class, 'statusUjian']);
+Route::post('/peserta/pakai-token', [PesertaController::class, 'pakaiToken']); // Endpoint untuk menggunakan token
 
 // ================= SOAL ROUTES =================
 Route::get('/soal/pg', [SoalController::class, 'getSoalPG']);

@@ -20,6 +20,7 @@ return new class extends Migration
             $table->enum('status_token', ['aktif', 'digunakan', 'hangus']);
             $table->dateTime('created_at');
             $table->dateTime('expired_at');
+            $table->dateTime('waktu_digunakan')->nullable();
             
             // Foreign key constraints
             $table->foreign('peserta_id')->references('id')->on('peserta');

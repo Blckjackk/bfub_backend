@@ -14,7 +14,8 @@ class Token extends Model
         'tipe',
         'status_token',
         'created_at',
-        'expired_at'
+        'expired_at',
+        'waktu_digunakan'
     ];
     public $timestamps = false;
 
