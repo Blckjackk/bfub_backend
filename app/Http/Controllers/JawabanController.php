@@ -10,49 +10,108 @@ use Illuminate\Support\Facades\Storage;
 
 class JawabanController extends Controller
 {
-    // 10. Kirim jawaban pilihan ganda
+    // 10. Kirim jawaban pilihan ganda (bulk)
     public function submitJawabanPG(Request $request)
     {
         $request->validate([
-            'peserta_id' => 'required|exists:peserta,id',
-            'soal_id' => 'required|exists:soal,id',
-            'jawaban_peserta' => 'required|in:A,B,C,D,E'
+            'answers' => 'required|array',
+            'answers.*.peserta_id' => 'required|exists:peserta,id',
+            'answers.*.soal_id' => 'required|exists:soal,id',
+            'answers.*.jawaban_peserta' => 'nullable|string|max:1',
+            'answers.*.waktu_dijawab' => 'required|string'
         ]);
 
-        $soal = Soal::find($request->soal_id);
-        $benar = strtoupper($request->jawaban_peserta) === strtoupper($soal->jawaban_benar);
+        $savedAnswers = [];
 
-        // Cek apakah sudah pernah menjawab
-        $existingJawaban = Jawaban::where('peserta_id', $request->peserta_id)
-                                 ->where('soal_id', $request->soal_id)
-                                 ->first();
+        foreach ($request->answers as $answerData) {
+            $soal = Soal::find($answerData['soal_id']);
+            
+            // Handle null/empty answers - use null for char field that's nullable
+            $jawabanPeserta = !empty($answerData['jawaban_peserta']) ? $answerData['jawaban_peserta'] : null;
+            $benar = false;
+            
+            if ($jawabanPeserta && $soal && $soal->jawaban_benar) {
+                $benar = strtolower($jawabanPeserta) === strtolower($soal->jawaban_benar);
+            }
 
-        if ($existingJawaban) {
-            // Update jawaban yang sudah ada
-            $existingJawaban->update([
-                'jawaban_peserta' => strtoupper($request->jawaban_peserta),
-                'benar' => $benar,
-                'waktu_dijawab' => now()
-            ]);
-            $jawaban = $existingJawaban;
-        } else {
-            // Buat jawaban baru
-            $jawaban = Jawaban::create([
-                'peserta_id' => $request->peserta_id,
-                'soal_id' => $request->soal_id,
-                'jawaban_peserta' => strtoupper($request->jawaban_peserta),
-                'benar' => $benar,
-                'waktu_dijawab' => now()
-            ]);
+            // Convert datetime format from frontend to MySQL format
+            $waktuDijawab = $answerData['waktu_dijawab'];
+            
+            // Cek apakah sudah pernah menjawab
+            $existingJawaban = Jawaban::where('peserta_id', $answerData['peserta_id'])
+                                     ->where('soal_id', $answerData['soal_id'])
+                                     ->first();
+
+            if ($existingJawaban) {
+                // Update jawaban yang sudah ada
+                $existingJawaban->update([
+                    'jawaban_peserta' => $jawabanPeserta,
+                    'benar' => $benar,
+                    'waktu_dijawab' => $waktuDijawab
+                ]);
+                $savedAnswers[] = $existingJawaban;
+            } else {
+                // Buat jawaban baru
+                $jawaban = Jawaban::create([
+                    'peserta_id' => $answerData['peserta_id'],
+                    'soal_id' => $answerData['soal_id'],
+                    'jawaban_peserta' => $jawabanPeserta,
+                    'benar' => $benar,
+                    'waktu_dijawab' => $waktuDijawab
+                ]);
+                $savedAnswers[] = $jawaban;
+            }
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'Jawaban berhasil disimpan',
-            'data' => [
-                'jawaban' => $jawaban,
-                'benar' => $benar
-            ]
+            'message' => 'Semua jawaban PG berhasil disimpan',
+            'data' => $savedAnswers
+        ]);
+    }
+
+    // Submit jawaban essay text (bukan file)
+    public function submitJawabanEssay(Request $request)
+    {
+        $request->validate([
+            'answers' => 'required|array',
+            'answers.*.peserta_id' => 'required|exists:peserta,id',
+            'answers.*.soal_essay_id' => 'required|exists:soal_essay,id',
+            'answers.*.jawaban_teks' => 'nullable|string'
+        ]);
+
+        $savedAnswers = [];
+
+        foreach ($request->answers as $answerData) {
+            // Handle null/empty answers
+            $jawabanTeks = $answerData['jawaban_teks'] ?? null;
+            
+            // Cek apakah sudah pernah menjawab
+            $existingJawaban = JawabanEssay::where('peserta_id', $answerData['peserta_id'])
+                                         ->where('soal_essay_id', $answerData['soal_essay_id'])
+                                         ->first();
+
+            if ($existingJawaban) {
+                // Update jawaban yang sudah ada
+                $existingJawaban->update([
+                    'jawaban_teks' => $jawabanTeks
+                ]);
+                $savedAnswers[] = $existingJawaban;
+            } else {
+                // Buat jawaban baru
+                $jawaban = JawabanEssay::create([
+                    'peserta_id' => $answerData['peserta_id'],
+                    'soal_essay_id' => $answerData['soal_essay_id'],
+                    'jawaban_teks' => $jawabanTeks
+                ]);
+                $savedAnswers[] = $jawaban;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Semua jawaban essay berhasil disimpan',
+            'data' => $savedAnswers
         ]);
     }
 

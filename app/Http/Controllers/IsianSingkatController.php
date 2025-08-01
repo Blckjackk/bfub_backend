@@ -51,53 +51,66 @@ class IsianSingkatController extends Controller
         ]);
     }
 
-    // Kirim jawaban isian singkat
+    // Kirim jawaban isian singkat (bulk)
     public function submitJawabanIsianSingkat(Request $request)
     {
         $request->validate([
-            'peserta_id' => 'required|exists:peserta,id',
-            'soal_isian_singkat_id' => 'required|exists:soal_isian_singkat,id',
-            'jawaban_peserta' => 'required|string'
+            'answers' => 'required|array',
+            'answers.*.peserta_id' => 'required|exists:peserta,id',
+            'answers.*.soal_isian_singkat_id' => 'required|exists:soal_isian_singkat,id',
+            'answers.*.jawaban_peserta' => 'nullable|string',
+            'answers.*.waktu_dijawab' => 'required|string'
         ]);
 
-        $soal = SoalIsianSingkat::find($request->soal_isian_singkat_id);
-        
-        // Cek kebenaran jawaban (case insensitive dan trim whitespace)
-        $jawabanBenar = strtolower(trim($soal->jawaban_benar));
-        $jawabanPeserta = strtolower(trim($request->jawaban_peserta));
-        $benar = $jawabanBenar === $jawabanPeserta;
+        $savedAnswers = [];
 
-        // Cek apakah sudah pernah menjawab
-        $existingJawaban = JawabanIsianSingkat::where('peserta_id', $request->peserta_id)
-                                            ->where('soal_isian_singkat_id', $request->soal_isian_singkat_id)
-                                            ->first();
+        foreach ($request->answers as $answerData) {
+            $soal = SoalIsianSingkat::find($answerData['soal_isian_singkat_id']);
+            
+            // Handle null/empty answers - varchar field can accept null
+            $jawabanPeserta = !empty($answerData['jawaban_peserta']) ? $answerData['jawaban_peserta'] : null;
+            $benar = false;
+            
+            if ($jawabanPeserta && $soal && $soal->jawaban_benar) {
+                // Cek kebenaran jawaban (case insensitive dan trim whitespace)
+                $jawabanBenar = strtolower(trim($soal->jawaban_benar));
+                $jawabanPesertaTrimmed = strtolower(trim($jawabanPeserta));
+                $benar = $jawabanBenar === $jawabanPesertaTrimmed;
+            }
 
-        if ($existingJawaban) {
-            // Update jawaban yang sudah ada
-            $existingJawaban->update([
-                'jawaban_peserta' => $request->jawaban_peserta,
-                'benar' => $benar,
-                'waktu_dijawab' => now()
-            ]);
-            $jawaban = $existingJawaban;
-        } else {
-            // Buat jawaban baru
-            $jawaban = JawabanIsianSingkat::create([
-                'peserta_id' => $request->peserta_id,
-                'soal_isian_singkat_id' => $request->soal_isian_singkat_id,
-                'jawaban_peserta' => $request->jawaban_peserta,
-                'benar' => $benar,
-                'waktu_dijawab' => now()
-            ]);
+            // Convert datetime format from frontend to MySQL format
+            $waktuDijawab = $answerData['waktu_dijawab'];
+
+            // Cek apakah sudah pernah menjawab
+            $existingJawaban = JawabanIsianSingkat::where('peserta_id', $answerData['peserta_id'])
+                                                ->where('soal_isian_singkat_id', $answerData['soal_isian_singkat_id'])
+                                                ->first();
+
+            if ($existingJawaban) {
+                // Update jawaban yang sudah ada
+                $existingJawaban->update([
+                    'jawaban_peserta' => $jawabanPeserta,
+                    'benar' => $benar,
+                    'waktu_dijawab' => $waktuDijawab
+                ]);
+                $savedAnswers[] = $existingJawaban;
+            } else {
+                // Buat jawaban baru
+                $jawaban = JawabanIsianSingkat::create([
+                    'peserta_id' => $answerData['peserta_id'],
+                    'soal_isian_singkat_id' => $answerData['soal_isian_singkat_id'],
+                    'jawaban_peserta' => $jawabanPeserta,
+                    'benar' => $benar,
+                    'waktu_dijawab' => $waktuDijawab
+                ]);
+                $savedAnswers[] = $jawaban;
+            }
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'Jawaban berhasil disimpan',
-            'data' => [
-                'jawaban' => $jawaban,
-                'benar' => $benar
-            ]
+            'message' => 'Semua jawaban isian singkat berhasil disimpan',
+            'data' => $savedAnswers
         ]);
     }
 

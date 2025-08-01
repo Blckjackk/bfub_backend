@@ -7,6 +7,7 @@ use App\Models\Token;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 
 class PesertaController extends Controller
@@ -25,14 +26,32 @@ class PesertaController extends Controller
                 'cabang_lomba_id' => 'required|exists:cabang_lomba,id'
             ]);
 
-            // Cek apakah token ada
-            $token = Token::where('kode_token', $request->kode_token)->first();
+            // Cek apakah peserta sudah memiliki token yang sedang digunakan
+            $activeToken = Token::where('peserta_id', $request->peserta_id)
+                              ->where('status_token', 'digunakan')
+                              ->first();
+
+            if ($activeToken) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Peserta sudah memiliki token aktif',
+                    'data' => [
+                        'token' => $activeToken->kode_token,
+                        'waktu_mulai' => $activeToken->waktu_digunakan
+                    ]
+                ]);
+            }
+
+            // Cek apakah token ada dan merupakan token utama
+            $token = Token::where('kode_token', $request->kode_token)
+                         ->where('tipe', 'utama')
+                         ->first();
             
             if (!$token) {
-                Log::warning('Token not found:', ['kode_token' => $request->kode_token]);
+                Log::warning('Token not found or not primary:', ['kode_token' => $request->kode_token]);
                 return response()->json([
                     'success' => false,
-                    'message' => 'Token tidak ditemukan'
+                    'message' => 'Token tidak valid atau bukan token utama'
                 ], 400);
             }
 
@@ -80,11 +99,22 @@ class PesertaController extends Controller
             if (!$token->save()) {
                 throw new \Exception('Gagal mengupdate status token');
             }
+
+            // Update status ujian peserta menjadi 'sedang_ujian'
+            $peserta = Peserta::find($request->peserta_id);
+            $peserta->status_ujian = 'sedang_ujian';
+            $peserta->waktu_mulai = $now;
             
-            Log::info('Token successfully used:', [
+            if (!$peserta->save()) {
+                throw new \Exception('Gagal mengupdate status ujian peserta');
+            }
+            
+            Log::info('Token successfully used and exam status updated:', [
                 'token_id' => $token->id,
                 'kode_token' => $token->kode_token,
-                'waktu_digunakan' => $token->waktu_digunakan
+                'waktu_digunakan' => $token->waktu_digunakan,
+                'peserta_id' => $peserta->id,
+                'status_ujian' => $peserta->status_ujian
             ]);
 
             return response()->json([
@@ -227,5 +257,145 @@ class PesertaController extends Controller
                 'cabang_lomba' => $peserta->cabangLomba
             ]
         ]);
+    }
+
+    // 8. Selesaikan ujian peserta
+    public function selesaikanUjian(Request $request)
+    {
+        try {
+            Log::info('Selesaikan ujian request:', $request->all());
+            
+            $request->validate([
+                'peserta_id' => 'required|exists:peserta,id'
+            ]);
+
+            $peserta = Peserta::find($request->peserta_id);
+            Log::info('Found peserta:', [
+                'id' => $peserta->id,
+                'nama' => $peserta->nama_lengkap,
+                'status_ujian' => $peserta->status_ujian
+            ]);
+            
+            // Pastikan peserta sedang dalam ujian
+            if ($peserta->status_ujian !== 'sedang_ujian') {
+                Log::warning('Peserta not in exam:', [
+                    'peserta_id' => $peserta->id,
+                    'current_status' => $peserta->status_ujian
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Peserta tidak sedang dalam ujian. Status saat ini: ' . $peserta->status_ujian
+                ], 400);
+            }
+
+            $now = now();
+            $peserta->status_ujian = 'selesai';
+            $peserta->waktu_selesai = $now;
+            
+            // Hitung waktu pengerjaan total dalam menit
+            if ($peserta->waktu_mulai) {
+                $waktuMulai = Carbon::parse($peserta->waktu_mulai);
+                $waktuSelesai = Carbon::parse($now);
+                $peserta->waktu_pengerjaan_total = $waktuSelesai->diffInMinutes($waktuMulai);
+            }
+            
+            if (!$peserta->save()) {
+                throw new \Exception('Gagal mengupdate status ujian peserta');
+            }
+
+            // Hanguskan token yang sedang digunakan
+            $activeToken = Token::where('peserta_id', $request->peserta_id)
+                              ->where('status_token', 'digunakan')
+                              ->first();
+            
+            if ($activeToken) {
+                $activeToken->status_token = 'hangus';
+                $activeToken->save();
+            }
+            
+            Log::info('Exam completed:', [
+                'peserta_id' => $peserta->id,
+                'status_ujian' => $peserta->status_ujian,
+                'waktu_mulai' => $peserta->waktu_mulai,
+                'waktu_selesai' => $peserta->waktu_selesai,
+                'waktu_pengerjaan_total' => $peserta->waktu_pengerjaan_total
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Ujian berhasil diselesaikan',
+                'data' => [
+                    'status_ujian' => $peserta->status_ujian,
+                    'waktu_mulai' => $peserta->waktu_mulai,
+                    'waktu_selesai' => $peserta->waktu_selesai,
+                    'waktu_pengerjaan_total' => $peserta->waktu_pengerjaan_total
+                ]
+            ]);
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error completing exam: ' . $e->getMessage());
+            Log::error($e->getTraceAsString());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menyelesaikan ujian',
+                'debug_message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // 9. Hanguskan token peserta 
+    public function hanguskanToken(Request $request)
+    {
+        try {
+            $request->validate([
+                'kode_token' => 'required|string'
+            ]);
+
+            // Cari token berdasarkan kode
+            $token = Token::where('kode_token', $request->kode_token)->first();
+            
+            if (!$token) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Token tidak ditemukan'
+                ], 404);
+            }
+
+            // Update status token menjadi hangus
+            $token->status_token = 'hangus';
+            $token->save();
+            
+            Log::info('Token successfully expired:', [
+                'token_id' => $token->id,
+                'kode_token' => $token->kode_token,
+                'peserta_id' => $token->peserta_id
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Token berhasil dihanguskan'
+            ]);
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error expiring token: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menghanguskan token'
+            ], 500);
+        }
     }
 }

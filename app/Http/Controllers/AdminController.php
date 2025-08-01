@@ -752,45 +752,58 @@ class AdminController extends Controller
                 'status_ujian' => $peserta->status_ujian
             ];
 
-            // Jawaban PG dengan detail soal
-            $jawabanPG = $peserta->jawaban->map(function($jawaban) {
+            // Jawaban PG dengan detail soal - tampilkan semua soal dan cocokkan dengan jawaban
+            $allSoalPG = $peserta->cabangLomba->soal->sortBy('nomor_soal');
+            $jawabanPG = $allSoalPG->map(function($soal) use ($peserta) {
+                $jawaban = $peserta->jawaban->where('soal_id', $soal->id)->first();
+                
                 return [
-                    'nomor_soal' => $jawaban->soal->nomor_soal,
-                    'pertanyaan' => $jawaban->soal->pertanyaan,
-                    'pilihan_a' => $jawaban->soal->pilihan_a,
-                    'pilihan_b' => $jawaban->soal->pilihan_b,
-                    'pilihan_c' => $jawaban->soal->pilihan_c,
-                    'pilihan_d' => $jawaban->soal->pilihan_d,
-                    'jawaban_benar' => $jawaban->soal->jawaban_benar,
-                    'jawaban_peserta' => $jawaban->jawaban_dipilih,
-                    'benar' => $jawaban->benar,
-                    'waktu_jawab' => $jawaban->waktu_jawab
+                    'nomor_soal' => $soal->nomor_soal,
+                    'pertanyaan' => $soal->pertanyaan,
+                    'pilihan_a' => $soal->pilihan_a,
+                    'pilihan_b' => $soal->pilihan_b,
+                    'pilihan_c' => $soal->pilihan_c,
+                    'pilihan_d' => $soal->pilihan_d,
+                    'jawaban_benar' => $soal->jawaban_benar,
+                    'jawaban_peserta' => $jawaban ? $jawaban->jawaban_peserta : null, // Fix: gunakan jawaban_peserta
+                    'benar' => $jawaban ? $jawaban->benar : false,
+                    'waktu_jawab' => $jawaban ? $jawaban->waktu_dijawab : null // Fix: gunakan waktu_dijawab
                 ];
-            })->sortBy('nomor_soal');
+            });
 
-            // Jawaban Essay dengan detail soal
-            $jawabanEssay = $peserta->jawabanEssay->map(function($jawaban) {
+            // Jawaban Essay dengan detail soal - tampilkan semua soal dan cocokkan dengan jawaban
+            $allSoalEssay = $peserta->cabangLomba->soalEssay->sortBy('nomor_soal');
+            $jawabanEssay = $allSoalEssay->map(function($soal) use ($peserta) {
+                $jawaban = $peserta->jawabanEssay->where('soal_essay_id', $soal->id)->first();
+                
                 return [
-                    'nomor_soal' => $jawaban->soalEssay->nomor_soal,
-                    'pertanyaan' => $jawaban->soalEssay->pertanyaan_essay,
-                    'jawaban_peserta' => $jawaban->jawaban_text,
-                    'file_path' => $jawaban->file_path,
-                    'file_name' => $jawaban->file_name,
-                    'waktu_jawab' => $jawaban->waktu_jawab
+                    'nomor_soal' => $soal->nomor_soal,
+                    'pertanyaan' => $soal->pertanyaan_essay,
+                    'jawaban_peserta' => $jawaban ? $jawaban->jawaban_teks : null,
+                    'file_path' => null, // Field tidak ada di tabel
+                    'file_name' => null, // Field tidak ada di tabel  
+                    'waktu_jawab' => null, // Field tidak ada di tabel
+                    'score' => $jawaban ? $jawaban->score : 0, // Tambah field score
+                    'jawaban_id' => $jawaban ? $jawaban->id : null // Tambah jawaban ID untuk update
                 ];
-            })->sortBy('nomor_soal');
+            });
 
-            // Jawaban Isian Singkat dengan detail soal
-            $jawabanIsianSingkat = $peserta->jawabanIsianSingkat->map(function($jawaban) {
+            // Jawaban Isian Singkat dengan detail soal - tampilkan semua soal dan cocokkan dengan jawaban
+            $allSoalIsianSingkat = $peserta->cabangLomba->soalIsianSingkat->sortBy('nomor_soal');
+            $jawabanIsianSingkat = $allSoalIsianSingkat->map(function($soal) use ($peserta) {
+                $jawaban = $peserta->jawabanIsianSingkat->where('soal_isian_singkat_id', $soal->id)->first();
+                
                 return [
-                    'nomor_soal' => $jawaban->soalIsianSingkat->nomor_soal,
-                    'pertanyaan' => $jawaban->soalIsianSingkat->pertanyaan_isian,
-                    'jawaban_peserta' => $jawaban->jawaban_text,
-                    'jawaban_benar' => $jawaban->soalIsianSingkat->jawaban_benar,
-                    'benar' => $jawaban->benar ?? false,
-                    'waktu_jawab' => $jawaban->waktu_jawab
+                    'nomor_soal' => $soal->nomor_soal,
+                    'pertanyaan' => $soal->pertanyaan_isian,
+                    'jawaban_peserta' => $jawaban ? $jawaban->jawaban_peserta : null, // Fix: gunakan jawaban_peserta
+                    'jawaban_benar' => $soal->jawaban_benar,
+                    'benar' => $jawaban ? ($jawaban->benar ?? false) : false,
+                    'waktu_jawab' => $jawaban ? $jawaban->waktu_dijawab : null, // Fix: gunakan waktu_dijawab
+                    'score' => $jawaban ? $jawaban->score : 0, // Tambah field score
+                    'jawaban_id' => $jawaban ? $jawaban->id : null // Tambah jawaban ID untuk update
                 ];
-            })->sortBy('nomor_soal');
+            });
 
             // Statistik
             $statistik = [
@@ -799,6 +812,7 @@ class AdminController extends Controller
                 'total_soal_isian' => $peserta->cabangLomba->soalIsianSingkat->count(),
                 'jawaban_pg_benar' => $peserta->jawaban->where('benar', true)->count(),
                 'jawaban_pg_salah' => $peserta->jawaban->where('benar', false)->count(),
+                'jawaban_pg_dijawab' => $peserta->jawaban->count(),
                 'jawaban_essay_count' => $peserta->jawabanEssay->count(),
                 'jawaban_isian_count' => $peserta->jawabanIsianSingkat->count(),
                 'persentase_ketepatan' => $peserta->jawaban->count() > 0 
@@ -1251,6 +1265,86 @@ class AdminController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal mengubah status token',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update nilai essay
+     */
+    public function updateNilaiEssay(Request $request, $jawabanId)
+    {
+        try {
+            $request->validate([
+                'nilai' => 'required|numeric|min:0'
+            ]);
+
+            $jawabanEssay = JawabanEssay::find($jawabanId);
+            
+            if (!$jawabanEssay) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Jawaban essay tidak ditemukan'
+                ], 404);
+            }
+
+            $jawabanEssay->score = $request->nilai;
+            $jawabanEssay->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Nilai essay berhasil diupdate',
+                'data' => [
+                    'id' => $jawabanEssay->id,
+                    'score' => $jawabanEssay->score
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengupdate nilai essay',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update nilai isian singkat
+     */
+    public function updateNilaiIsianSingkat(Request $request, $jawabanId)
+    {
+        try {
+            $request->validate([
+                'nilai' => 'required|numeric|min:0'
+            ]);
+
+            $jawabanIsianSingkat = JawabanIsianSingkat::find($jawabanId);
+            
+            if (!$jawabanIsianSingkat) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Jawaban isian singkat tidak ditemukan'
+                ], 404);
+            }
+
+            $jawabanIsianSingkat->score = $request->nilai;
+            $jawabanIsianSingkat->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Nilai isian singkat berhasil diupdate',
+                'data' => [
+                    'id' => $jawabanIsianSingkat->id,
+                    'score' => $jawabanIsianSingkat->score
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengupdate nilai isian singkat',
                 'error' => $e->getMessage()
             ], 500);
         }

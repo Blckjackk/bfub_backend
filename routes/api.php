@@ -29,6 +29,8 @@ Route::get('/peserta/profile/{id}', [PesertaController::class, 'getProfile']);
 Route::put('/peserta/update', [PesertaController::class, 'update']);
 Route::get('/peserta/status-ujian', [PesertaController::class, 'statusUjian']);
 Route::post('/peserta/pakai-token', [PesertaController::class, 'pakaiToken']); // Endpoint untuk menggunakan token
+Route::post('/peserta/selesaikan-ujian', [PesertaController::class, 'selesaikanUjian']); // Endpoint untuk menyelesaikan ujian
+Route::post('/peserta/hanguskan-token', [PesertaController::class, 'hanguskanToken']); // Endpoint untuk menghanguskan token
 
 // ================= SOAL ROUTES =================
 Route::get('/soal/pg', [SoalController::class, 'getSoalPG']);
@@ -41,6 +43,7 @@ Route::get('/soal/isian-singkat/{nomor}', [IsianSingkatController::class, 'getSo
 Route::post('/jawaban/pg', [JawabanController::class, 'submitJawabanPG']);
 Route::get('/jawaban/pg', [JawabanController::class, 'getJawabanPG']);
 Route::post('/jawaban/essay/upload', [JawabanController::class, 'uploadFileEssay']);
+Route::post('/jawaban/essay', [JawabanController::class, 'submitJawabanEssay']); // New route for text submission
 Route::get('/jawaban/essay', [JawabanController::class, 'previewFileEssay']);
 Route::put('/jawaban/essay/upload', [JawabanController::class, 'uploadFileEssay']);
 Route::post('/jawaban/isian-singkat', [IsianSingkatController::class, 'submitJawabanIsianSingkat']);
@@ -113,6 +116,10 @@ Route::get('/admin/hasil/peserta/{id}', [AdminController::class, 'getHasilPesert
 Route::delete('/admin/hasil/peserta/{id}', [AdminController::class, 'deleteHasilPeserta']); // Delete hasil peserta
 Route::get('/peserta/hasil', [PesertaController::class, 'getHasilLomba']); // Get hasil lomba peserta
 Route::get('/admin/hasil/lomba/{id}', [AdminController::class, 'getHasilLomba']); // Get hasil by lomba ID (with filter)
+
+// Routes untuk update nilai essay dan isian singkat
+Route::put('/admin/nilai/essay/{jawabanId}', [AdminController::class, 'updateNilaiEssay']); // Update nilai essay
+Route::put('/admin/nilai/isian-singkat/{jawabanId}', [AdminController::class, 'updateNilaiIsianSingkat']); // Update nilai isian singkat
 Route::get('/admin/ranking', [AdminController::class, 'getRanking']); // Get ranking peserta
 
 // ================= FILE IMPORT ROUTES (MISSING) =================

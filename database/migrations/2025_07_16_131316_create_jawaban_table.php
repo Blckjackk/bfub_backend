@@ -15,8 +15,8 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('peserta_id');
             $table->unsignedBigInteger('soal_id');
-            $table->char('jawaban_peserta', 1);
-            $table->boolean('benar');
+            $table->char('jawaban_peserta', 1)->nullable();
+            $table->boolean('benar')->default(false);
             $table->dateTime('waktu_dijawab')->nullable();
             
             // Foreign key constraints
