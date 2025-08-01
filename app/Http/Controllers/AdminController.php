@@ -16,6 +16,163 @@ use Illuminate\Support\Facades\Storage;
 
 class AdminController extends Controller
 {
+    // Get single PG question by ID
+    public function getSoalPGById($id)
+    {
+        try {
+            $soal = Soal::findOrFail($id);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Soal PG berhasil diambil',
+                'data' => $soal
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Soal tidak ditemukan',
+                'error' => $e->getMessage()
+            ], 404);
+        }
+    }
+
+    // Update PG question by ID
+    public function updateSoalPG(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'cabang_lomba_id' => 'required|exists:cabang_lomba,id',
+                'pertanyaan' => 'required|string',
+                'opsi_a' => 'required|string',
+                'opsi_b' => 'required|string',
+                'opsi_c' => 'required|string',
+                'opsi_d' => 'required|string',
+                'opsi_e' => 'required|string',
+                'jawaban_benar' => 'required|string|in:A,B,C,D,E',
+                'tipe_soal' => 'required|string|in:text,gambar'
+            ]);
+
+            $soal = Soal::findOrFail($id);
+            
+            // Update basic fields
+            $soal->pertanyaan = $request->pertanyaan;
+            $soal->opsi_a = $request->opsi_a;
+            $soal->opsi_b = $request->opsi_b;
+            $soal->opsi_c = $request->opsi_c;
+            $soal->opsi_d = $request->opsi_d;
+            $soal->opsi_e = $request->opsi_e;
+            $soal->jawaban_benar = $request->jawaban_benar;
+            $soal->tipe_soal = $request->tipe_soal;
+            
+            // Handle media uploads if present
+            if ($request->hasFile('media_soal')) {
+                if ($soal->media_soal) {
+                    Storage::delete('public/' . $soal->media_soal);
+                }
+                $soal->media_soal = $request->file('media_soal')->store('soal_pg', 'public');
+            }
+            
+            // Handle option media
+            $mediaFields = ['opsi_a_media', 'opsi_b_media', 'opsi_c_media', 'opsi_d_media', 'opsi_e_media'];
+            foreach ($mediaFields as $field) {
+                if ($request->hasFile($field)) {
+                    if ($soal->$field) {
+                        Storage::delete('public/' . $soal->$field);
+                    }
+                    $soal->$field = $request->file($field)->store('soal_pg_options', 'public');
+                }
+            }
+
+            $soal->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Soal PG berhasil diupdate',
+                'data' => $soal
+            ]);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Soal tidak ditemukan'
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengupdate soal PG',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Update Essay question by ID
+    public function updateSoalEssay(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'cabang_lomba_id' => 'required|exists:cabang_lomba,id',
+                'pertanyaan_essay' => 'required|string'
+            ]);
+
+            $soal = SoalEssay::findOrFail($id);
+            $soal->pertanyaan_essay = $request->pertanyaan_essay;
+            $soal->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Soal essay berhasil diupdate',
+                'data' => $soal
+            ]);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Soal tidak ditemukan'
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengupdate soal essay',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Update Isian Singkat question by ID
+    public function updateSoalIsianSingkat(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'cabang_lomba_id' => 'required|exists:cabang_lomba,id',
+                'pertanyaan_isian' => 'required|string',
+                'jawaban_benar' => 'required|string'
+            ]);
+
+            $soal = SoalIsianSingkat::findOrFail($id);
+            $soal->pertanyaan_isian = $request->pertanyaan_isian;
+            $soal->jawaban_benar = $request->jawaban_benar;
+            $soal->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Soal isian singkat berhasil diupdate',
+                'data' => $soal
+            ]);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Soal tidak ditemukan'
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengupdate soal isian singkat',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     // 1. Get all lomba data untuk halaman manajemen lomba
     public function getLomba(Request $request)
     {

@@ -54,6 +54,7 @@ Route::post('/ujian/auto-save', [UjianController::class, 'autoSave']);
 
 // ================= ADMIN ROUTES =================
 Route::get('/admin/peserta', [AdminController::class, 'getPeserta']);
+Route::get('/admin/soal/pg/{id}', [AdminController::class, 'getSoalPGById']); // Get single PG question
 Route::post('/admin/soal/pg', [AdminController::class, 'tambahSoalPG']);
 Route::post('/admin/soal/essay', [AdminController::class, 'tambahSoalEssay']);
 Route::post('/admin/soal/isian-singkat', [AdminController::class, 'tambahSoalIsianSingkat']);
@@ -94,13 +95,13 @@ Route::put('/admin/token/{id}/status', [AdminController::class, 'updateTokenStat
 Route::delete('/admin/token/{id}', [AdminController::class, 'deleteToken']); // Delete token
 Route::patch('/admin/token/expire', [AdminController::class, 'markTokensAsExpired']); // Mark tokens as expired
 
-// ================= SOAL MANAGEMENT ROUTES (MISSING) =================
+// ================= SOAL MANAGEMENT ROUTES =================
 Route::get('/admin/soal/pg', [AdminController::class, 'getSoalPG']); // Get all soal PG
 Route::get('/admin/soal/essay', [AdminController::class, 'getSoalEssay']); // Get all soal essay
 Route::get('/admin/soal/isian-singkat', [AdminController::class, 'getSoalIsianSingkat']); // Get all soal isian singkat
-Route::put('/admin/soal/pg/{id}', [AdminController::class, 'updateSoalPG']); // Update soal PG
-Route::put('/admin/soal/essay/{id}', [AdminController::class, 'updateSoalEssay']); // Update soal essay
-Route::put('/admin/soal/isian-singkat/{id}', [AdminController::class, 'updateSoalIsianSingkat']); // Update soal isian singkat
+Route::match(['put', 'post'], '/admin/soal/pg/{id}', [AdminController::class, 'updateSoalPG']); // Update soal PG
+Route::match(['put', 'post'], '/admin/soal/essay/{id}', [AdminController::class, 'updateSoalEssay']); // Update soal essay
+Route::match(['put', 'post'], '/admin/soal/isian-singkat/{id}', [AdminController::class, 'updateSoalIsianSingkat']); // Update soal isian singkat
 Route::delete('/admin/soal/pg/{id}', [AdminController::class, 'deleteSoalPG']); // Delete soal PG
 Route::delete('/admin/soal/essay/{id}', [AdminController::class, 'deleteSoalEssay']); // Delete soal essay
 Route::delete('/admin/soal/isian-singkat/{id}', [AdminController::class, 'deleteSoalIsianSingkat']); // Delete soal isian singkat
