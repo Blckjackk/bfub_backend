@@ -46,7 +46,7 @@ class AuthController extends Controller
         // Jika bukan admin, cek sebagai peserta
         $peserta = Peserta::where('username', $username)->first();
 
-        if ($peserta && Hash::check($password, $peserta->password_hash)) {
+        if ($peserta && $password === $peserta->password_hash) { // Bandingkan password langsung tanpa hash
             // Login sebagai peserta
             $sessionToken = Str::random(60);
             
@@ -96,7 +96,7 @@ class AuthController extends Controller
                 'kota_provinsi' => $request->kota_provinsi,
                 'username' => $request->username,
                 'role' => 'peserta',
-                'password_hash' => Hash::make($request->password),
+                'password_hash' => $request->password, // Simpan password tanpa hash
                 'cabang_lomba_id' => $request->cabang_lomba_id,
                 'status_ujian' => 'belum_mulai'
             ]);

@@ -59,9 +59,12 @@ Route::post('/ujian/auto-save', [UjianController::class, 'autoSave']);
 // ================= ADMIN ROUTES =================
 Route::get('/admin/peserta', [AdminController::class, 'getPeserta']);
 Route::get('/admin/soal/pg/{id}', [AdminController::class, 'getSoalPGById']); // Get single PG question
-Route::post('/admin/soal/pg', [AdminController::class, 'tambahSoalPG']);
-Route::post('/admin/soal/essay', [AdminController::class, 'tambahSoalEssay']);
-Route::post('/admin/soal/isian-singkat', [AdminController::class, 'tambahSoalIsianSingkat']);
+Route::get('/admin/soal/essay/{id}', [AdminController::class, 'getSoalEssayById']); // Get single Essay question
+Route::get('/admin/soal/isian-singkat/{id}', [AdminController::class, 'getSoalIsianSingkatById']); // Get single Isian Singkat question
+Route::post('/admin/soal/pg', [AdminController::class, 'createSoalPG']);
+Route::post('/admin/soal/essay', [AdminController::class, 'createSoalEssay']);
+Route::post('/admin/soal/isian-singkat', [AdminController::class, 'createSoalIsianSingkat']);
+Route::post('/admin/debug-upload', [AdminController::class, 'debugUpload']); // Debug endpoint
 Route::get('/admin/jawaban/peserta', [AdminController::class, 'getJawabanPeserta']);
 Route::get('/admin/nilai/otomatis', [AdminController::class, 'hitungNilaiOtomatis']);
 Route::get('/admin/export/excel', [AdminController::class, 'exportExcel']);
@@ -88,6 +91,7 @@ Route::get('/admin/peserta/{id}', [AdminController::class, 'getPesertaById']); /
 Route::post('/admin/peserta', [AdminController::class, 'createPeserta']); // Create peserta
 Route::put('/admin/peserta/{id}', [AdminController::class, 'updatePesertaById']); // Update peserta
 Route::delete('/admin/peserta/{id}', [AdminController::class, 'deletePeserta']); // Delete peserta
+Route::post('/admin/peserta/delete-batch', [AdminController::class, 'deleteBatchPeserta']); // Delete multiple peserta
 
 // ================= TOKEN MANAGEMENT ROUTES =================
 Route::get('/admin/token', [AdminController::class, 'getAllTokens']); // Get all tokens
@@ -120,6 +124,9 @@ Route::get('/admin/hasil/lomba/{id}', [AdminController::class, 'getHasilLomba'])
 // Routes untuk update nilai essay dan isian singkat
 Route::put('/admin/nilai/essay/{jawabanId}', [AdminController::class, 'updateNilaiEssay']); // Update nilai essay
 Route::put('/admin/nilai/isian-singkat/{jawabanId}', [AdminController::class, 'updateNilaiIsianSingkat']); // Update nilai isian singkat
+
+// Routes untuk statistik dashboard admin
+Route::get('/admin/stats/dashboard', [AdminController::class, 'getDashboardStats']); // Get dashboard statistics
 Route::get('/admin/ranking', [AdminController::class, 'getRanking']); // Get ranking peserta
 
 // ================= FILE IMPORT ROUTES (MISSING) =================

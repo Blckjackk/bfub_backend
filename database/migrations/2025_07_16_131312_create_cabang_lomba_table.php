@@ -17,6 +17,7 @@ return new class extends Migration
             $table->text('deskripsi_lomba')->nullable();
             $table->dateTime('waktu_mulai_pengerjaan');
             $table->dateTime('waktu_akhir_pengerjaan');
+            $table->timestamps(); // Add timestamps for created_at and updated_at
         });
     }
 

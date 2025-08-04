@@ -13,6 +13,7 @@ use App\Models\JawabanIsianSingkat;
 use App\Models\CabangLomba;
 use App\Models\Token;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class AdminController extends Controller
 {
@@ -25,6 +26,46 @@ class AdminController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Soal PG berhasil diambil',
+                'data' => $soal
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Soal tidak ditemukan',
+                'error' => $e->getMessage()
+            ], 404);
+        }
+    }
+
+    // Get single Essay question by ID
+    public function getSoalEssayById($id)
+    {
+        try {
+            $soal = SoalEssay::findOrFail($id);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Soal Essay berhasil diambil',
+                'data' => $soal
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Soal tidak ditemukan',
+                'error' => $e->getMessage()
+            ], 404);
+        }
+    }
+
+    // Get single Isian Singkat question by ID
+    public function getSoalIsianSingkatById($id)
+    {
+        try {
+            $soal = SoalIsianSingkat::findOrFail($id);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Soal Isian Singkat berhasil diambil',
                 'data' => $soal
             ]);
         } catch (\Exception $e) {
@@ -251,11 +292,17 @@ class AdminController extends Controller
                         'id' => $soal->id,
                         'nomor_soal' => $soal->nomor_soal,
                         'pertanyaan' => $soal->pertanyaan,
+                        'media_soal' => $soal->media_soal,
                         'opsi_a' => $soal->opsi_a,
+                        'opsi_a_media' => $soal->opsi_a_media,
                         'opsi_b' => $soal->opsi_b,
+                        'opsi_b_media' => $soal->opsi_b_media,
                         'opsi_c' => $soal->opsi_c,
+                        'opsi_c_media' => $soal->opsi_c_media,
                         'opsi_d' => $soal->opsi_d,
+                        'opsi_d_media' => $soal->opsi_d_media,
                         'opsi_e' => $soal->opsi_e,
+                        'opsi_e_media' => $soal->opsi_e_media,
                         'jawaban_benar' => $soal->jawaban_benar,
                         'tipe_soal' => $soal->tipe_soal,
                         'deskripsi_soal' => $soal->deskripsi_soal
@@ -1345,6 +1392,462 @@ class AdminController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal mengupdate nilai isian singkat',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get dashboard statistics
+     */
+    public function getDashboardStats()
+    {
+        try {
+            // Hitung total peserta
+            $totalPeserta = Peserta::count();
+            
+            // Hitung total lomba
+            $totalLomba = CabangLomba::count();
+            
+            // Hitung peserta yang sedang mengerjakan ujian (status: mengerjakan)
+            $pesertaOnline = Peserta::where('status_ujian', 'mengerjakan')->count();
+            
+            // Statistik tambahan
+            $pesertaSelesai = Peserta::where('status_ujian', 'selesai')->count();
+            $pesertaBelumMulai = Peserta::where('status_ujian', 'belum_mulai')->count();
+            
+            // Token statistics
+            $tokenAktif = Token::where('status_token', 'aktif')->count();
+            $tokenTerpakai = Token::where('status_token', 'terpakai')->count();
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'total_peserta' => $totalPeserta,
+                    'total_lomba' => $totalLomba,
+                    'peserta_online' => $pesertaOnline, // Peserta yang sedang mengerjakan
+                    'peserta_selesai' => $pesertaSelesai,
+                    'peserta_belum_mulai' => $pesertaBelumMulai,
+                    'token_aktif' => $tokenAktif,
+                    'token_terpakai' => $tokenTerpakai
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil statistik dashboard',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete peserta
+     */
+    public function deletePeserta($id)
+    {
+        try {
+            $peserta = Peserta::find($id);
+            
+            if (!$peserta) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Peserta tidak ditemukan'
+                ], 404);
+            }
+
+            // Delete related data in proper order to handle foreign key constraints
+            Token::where('peserta_id', $id)->delete();
+            Jawaban::where('peserta_id', $id)->delete();
+            JawabanEssay::where('peserta_id', $id)->delete();
+            JawabanIsianSingkat::where('peserta_id', $id)->delete();
+
+            // Delete peserta
+            $peserta->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Peserta berhasil dihapus'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus peserta',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete multiple peserta
+     */
+    public function deleteBatchPeserta(Request $request)
+    {
+        try {
+            $ids = $request->input('ids', []);
+            
+            if (empty($ids)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tidak ada peserta yang dipilih'
+                ], 400);
+            }
+
+            // Delete related data for all peserta in proper order to handle foreign key constraints
+            Token::whereIn('peserta_id', $ids)->delete();
+            Jawaban::whereIn('peserta_id', $ids)->delete();
+            JawabanEssay::whereIn('peserta_id', $ids)->delete();
+            JawabanIsianSingkat::whereIn('peserta_id', $ids)->delete();
+
+            // Delete peserta
+            $deleted = Peserta::whereIn('id', $ids)->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Berhasil menghapus {$deleted} peserta"
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus peserta',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Create new cabang lomba
+     */
+    public function createLomba(Request $request)
+    {
+        try {
+            // Log the incoming request for debugging
+            Log::info('Create Lomba Request:', $request->all());
+
+            $request->validate([
+                'nama_cabang' => 'required|string|max:100',
+                'deskripsi_lomba' => 'nullable|string',
+                'waktu_mulai_pengerjaan' => 'required|string', // Accept as string first, then convert
+                'waktu_akhir_pengerjaan' => 'required|string'   // Accept as string first, then convert
+            ]);
+
+            // Convert datetime strings to proper format
+            $waktuMulai = \Carbon\Carbon::parse($request->waktu_mulai_pengerjaan);
+            $waktuAkhir = \Carbon\Carbon::parse($request->waktu_akhir_pengerjaan);
+
+            // Validate that end time is after start time
+            if ($waktuAkhir <= $waktuMulai) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Waktu akhir pengerjaan harus setelah waktu mulai'
+                ], 422);
+            }
+
+            $lomba = CabangLomba::create([
+                'nama_cabang' => $request->nama_cabang,
+                'deskripsi_lomba' => $request->deskripsi_lomba,
+                'waktu_mulai_pengerjaan' => $waktuMulai,
+                'waktu_akhir_pengerjaan' => $waktuAkhir
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Lomba berhasil dibuat',
+                'data' => $lomba
+            ], 201);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation Error',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Create Lomba Error:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'request' => $request->all()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal membuat lomba: ' . $e->getMessage(),
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete lomba
+     */
+    public function deleteLomba($id)
+    {
+        try {
+            $lomba = CabangLomba::find($id);
+            
+            if (!$lomba) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Lomba tidak ditemukan'
+                ], 404);
+            }
+
+            // Check if there are peserta using this lomba
+            $pesertaCount = Peserta::where('cabang_lomba_id', $id)->count();
+            if ($pesertaCount > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Tidak dapat menghapus lomba karena masih ada {$pesertaCount} peserta yang terdaftar"
+                ], 400);
+            }
+
+            // Delete related soal
+            Soal::where('cabang_lomba_id', $id)->delete();
+            SoalEssay::where('cabang_lomba_id', $id)->delete();
+            SoalIsianSingkat::where('cabang_lomba_id', $id)->delete();
+
+            // Delete lomba
+            $lomba->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Lomba berhasil dihapus'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus lomba',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Create soal PG
+     */
+    public function createSoalPG(Request $request)
+    {
+        try {
+            // Base validation rules
+            $rules = [
+                'cabang_lomba_id' => 'required|exists:cabang_lomba,id',
+                'tipe_soal' => 'required|in:text,gambar',
+                'pertanyaan' => 'nullable|string',
+                'jawaban_benar' => 'required|in:A,B,C,D,E',
+                'media_soal' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+                'opsi_a_media' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+                'opsi_b_media' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+                'opsi_c_media' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+                'opsi_d_media' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+                'opsi_e_media' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            ];
+
+            // Conditional validation based on tipe_soal
+            if ($request->tipe_soal === 'text') {
+                // For text type, text options are required
+                $rules['opsi_a'] = 'required|string';
+                $rules['opsi_b'] = 'required|string';
+                $rules['opsi_c'] = 'required|string';
+                $rules['opsi_d'] = 'required|string';
+                $rules['opsi_e'] = 'required|string';
+            } else {
+                // For gambar type, text options are optional
+                $rules['opsi_a'] = 'nullable|string';
+                $rules['opsi_b'] = 'nullable|string';
+                $rules['opsi_c'] = 'nullable|string';
+                $rules['opsi_d'] = 'nullable|string';
+                $rules['opsi_e'] = 'nullable|string';
+            }
+
+            $request->validate($rules);
+
+            // Get next nomor_soal
+            $nextNomor = Soal::where('cabang_lomba_id', $request->cabang_lomba_id)->max('nomor_soal') + 1;
+
+            $data = [
+                'cabang_lomba_id' => $request->cabang_lomba_id,
+                'nomor_soal' => $nextNomor,
+                'tipe_soal' => $request->tipe_soal,
+                'pertanyaan' => $request->pertanyaan ?? '',
+                'opsi_a' => $request->opsi_a ?? '',
+                'opsi_b' => $request->opsi_b ?? '',
+                'opsi_c' => $request->opsi_c ?? '',
+                'opsi_d' => $request->opsi_d ?? '',
+                'opsi_e' => $request->opsi_e ?? '',
+                'jawaban_benar' => $request->jawaban_benar,
+            ];
+
+            // Handle file uploads
+            if ($request->hasFile('media_soal')) {
+                $file = $request->file('media_soal');
+                $filename = time() . '_soal_' . str_replace(' ', '_', $file->getClientOriginalName());
+                
+                // Ensure directory exists
+                $uploadPath = public_path('storage/soal');
+                if (!is_dir($uploadPath)) {
+                    mkdir($uploadPath, 0755, true);
+                }
+                
+                $file->move($uploadPath, $filename);
+                $data['media_soal'] = 'storage/soal/' . $filename;
+            }
+
+            // Handle option media uploads
+            $options = ['a', 'b', 'c', 'd', 'e'];
+            foreach ($options as $option) {
+                $fieldName = "opsi_{$option}_media";
+                if ($request->hasFile($fieldName)) {
+                    $file = $request->file($fieldName);
+                    $filename = time() . "_opsi_{$option}_" . str_replace(' ', '_', $file->getClientOriginalName());
+                    
+                    // Ensure directory exists
+                    $uploadPath = public_path('storage/soal');
+                    if (!is_dir($uploadPath)) {
+                        mkdir($uploadPath, 0755, true);
+                    }
+                    
+                    $file->move($uploadPath, $filename);
+                    $data[$fieldName] = 'storage/soal/' . $filename;
+                }
+            }
+
+            $soal = Soal::create($data);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Soal PG berhasil dibuat',
+                'data' => $soal
+            ], 201);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal membuat soal PG',
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ], 500);
+        }
+    }
+
+    /**
+     * Create soal Essay
+     */
+    public function createSoalEssay(Request $request)
+    {
+        try {
+            $request->validate([
+                'cabang_lomba_id' => 'required|exists:cabang_lomba,id',
+                'pertanyaan_essay' => 'required|string',
+            ]);
+
+            // Get next nomor_soal
+            $nextNomor = SoalEssay::where('cabang_lomba_id', $request->cabang_lomba_id)->max('nomor_soal') + 1;
+
+            $soal = SoalEssay::create([
+                'cabang_lomba_id' => $request->cabang_lomba_id,
+                'nomor_soal' => $nextNomor,
+                'pertanyaan_essay' => $request->pertanyaan_essay,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Soal Essay berhasil dibuat',
+                'data' => $soal
+            ], 201);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal membuat soal Essay',
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ], 500);
+        }
+    }
+
+    /**
+     * Create soal Isian Singkat
+     */
+    public function createSoalIsianSingkat(Request $request)
+    {
+        try {
+            $request->validate([
+                'cabang_lomba_id' => 'required|exists:cabang_lomba,id',
+                'pertanyaan_isian' => 'required|string',
+                'jawaban_benar' => 'required|string',
+            ]);
+
+            // Get next nomor_soal
+            $nextNomor = SoalIsianSingkat::where('cabang_lomba_id', $request->cabang_lomba_id)->max('nomor_soal') + 1;
+
+            $soal = SoalIsianSingkat::create([
+                'cabang_lomba_id' => $request->cabang_lomba_id,
+                'nomor_soal' => $nextNomor,
+                'pertanyaan_isian' => $request->pertanyaan_isian,
+                'jawaban_benar' => $request->jawaban_benar,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Soal Isian Singkat berhasil dibuat',
+                'data' => $soal
+            ], 201);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal membuat soal Isian Singkat',
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ], 500);
+        }
+    }
+
+    /**
+     * Debug endpoint to test file uploads
+     */
+    public function debugUpload(Request $request)
+    {
+        try {
+            $data = [
+                'has_files' => $request->hasFile('media_soal'),
+                'all_files' => array_keys($request->allFiles()),
+                'all_input' => $request->all(),
+                'storage_path' => public_path('storage/soal'),
+                'storage_exists' => is_dir(public_path('storage/soal')),
+                'storage_writable' => is_writable(public_path('storage/soal'))
+            ];
+
+            return response()->json([
+                'success' => true,
+                'debug_data' => $data
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
                 'error' => $e->getMessage()
             ], 500);
         }
