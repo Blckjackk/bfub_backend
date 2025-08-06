@@ -213,6 +213,7 @@ class PesertaController extends Controller
                     'asal_sekolah' => $peserta->asal_sekolah,
                     'kota_provinsi' => $peserta->kota_provinsi,
                     'username' => $peserta->username,
+                    'password_hash' => $peserta->password_hash,
                     'status_ujian' => $peserta->status_ujian,
                     'waktu_mulai' => $peserta->waktu_mulai,
                     'waktu_selesai' => $peserta->waktu_selesai,
