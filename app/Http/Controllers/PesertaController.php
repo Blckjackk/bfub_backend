@@ -398,4 +398,40 @@ class PesertaController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Heartbeat untuk tracking peserta online
+     */
+    public function heartbeat(Request $request)
+    {
+        try {
+            $request->validate([
+                'peserta_id' => 'required|exists:peserta,id'
+            ]);
+
+            $peserta = Peserta::find($request->peserta_id);
+            if ($peserta) {
+                // Update timestamp to mark as online
+                $peserta->touch(); // Updates updated_at timestamp
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Heartbeat received',
+                    'timestamp' => now()
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Peserta not found'
+            ], 404);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Heartbeat failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

@@ -19,7 +19,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    'allowed_origins' => ['http://localhost:3000', 'http://127.0.0.1:3000','https://bersekolah-astro-r2hn9m8ut-blckjackks-projects.vercel.app', 'https://bersekolah-astro.vercel.app/'],
 
     'allowed_origins_patterns' => [],
 

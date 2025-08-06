@@ -1180,6 +1180,56 @@ class AdminController extends Controller
         }
     }
 
+    // Bulk delete tokens
+    public function deleteBulkTokens(Request $request)
+    {
+        $request->validate([
+            'token_ids' => 'required|array',
+            'token_ids.*' => 'integer'
+        ]);
+
+        try {
+            // Check if all token IDs exist
+            $validTokens = Token::whereIn('id', $request->token_ids)->pluck('id')->toArray();
+            if (count($validTokens) !== count($request->token_ids)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Beberapa token tidak ditemukan'
+                ], 400);
+            }
+            $tokenIds = $request->token_ids;
+            
+            // Check if any token is being used
+            $tokensInUse = Token::whereIn('id', $tokenIds)
+                ->where('status_token', 'digunakan')
+                ->count();
+            
+            if ($tokensInUse > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Tidak dapat menghapus {$tokensInUse} token yang sedang digunakan"
+                ], 400);
+            }
+
+            // Delete tokens that are not in use
+            $deleted = Token::whereIn('id', $tokenIds)
+                ->where('status_token', '!=', 'digunakan')
+                ->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Berhasil menghapus {$deleted} token"
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus token',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     // Mark tokens as expired (hangus)
     public function markTokensAsExpired(Request $request)
     {
