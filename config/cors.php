@@ -20,15 +20,16 @@ return [
     'allowed_methods' => ['*'],
 
     'allowed_origins' => [
-        'http://localhost:3000', 
-            'http://127.0.0.1:3000',
-            'https://*.vercel.app',
-            'https://vercel.app',
-        ],
-
-    'allowed_origins_patterns' => [
-        'https://*.vercel.app',
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        'https://bfub-git-main-blckjackks-projects.vercel.app',
     ],
+
+    // 'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => [
+        '#^https://.*\.vercel\.app$#',
+    ],
+
 
     'allowed_headers' => ['*'],
 
