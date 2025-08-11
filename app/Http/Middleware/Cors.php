@@ -17,13 +17,32 @@ class Cors
     {
         $response = $next($request);
 
-        $response->headers->set('Access-Control-Allow-Origin', 'http://localhost:3000');
+        // Get the origin of the request
+        $origin = $request->headers->get('Origin');
+        
+        // Define allowed origins
+        $allowedOrigins = [
+            'http://localhost:3000',
+            'http://127.0.0.1:3000',
+            'https://bfub-git-main-blckjackks-projects.vercel.app',
+        ];
+        
+        // Check if origin is in allowed list or matches vercel pattern
+        $isAllowed = in_array($origin, $allowedOrigins) || 
+                    (preg_match('/^https:\/\/.*\.vercel\.app$/', $origin));
+        
+        if ($isAllowed) {
+            $response->headers->set('Access-Control-Allow-Origin', $origin);
+        }
+        
         $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-        $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-        $response->headers->set('Access-Control-Allow-Credentials', 'false');
+        $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+        $response->headers->set('Access-Control-Allow-Credentials', 'true');
 
+        // Handle preflight OPTIONS request
         if ($request->getMethod() === 'OPTIONS') {
             $response->setStatusCode(200);
+            return $response;
         }
 
         return $response;

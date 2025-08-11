@@ -12,10 +12,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Use Laravel's built-in CORS middleware for API routes
         $middleware->api([
-            \App\Http\Middleware\Cors::class,
+            \Illuminate\Http\Middleware\HandleCors::class,
         ]);
         
+        // Keep custom CORS as fallback
         $middleware->alias([
             'cors' => \App\Http\Middleware\Cors::class,
         ]);
