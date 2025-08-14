@@ -186,3 +186,7 @@ Route::get('/api/token-peserta-by-name', [TokenController::class, 'getTokenByNam
 Route::get('/api/get-data-peserta', [PesertaController::class, 'getDataPeserta']);
 Route::get('/test', fn () => response()->json(['message' => 'API works!']));
 
+// ================= RILIS NILAI ROUTES =================
+Route::get('/peserta/cek-status-rilis', [PesertaController::class, 'cekStatusRilisNilai']);
+Route::post('/admin/lomba/{lombaId}/set-tanggal-rilis', [AdminController::class, 'setTanggalRilisNilai']);
+

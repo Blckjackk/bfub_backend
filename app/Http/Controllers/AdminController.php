@@ -14,6 +14,7 @@ use App\Models\CabangLomba;
 use App\Models\Token;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class AdminController extends Controller
 {
@@ -240,6 +241,7 @@ class AdminController extends Controller
                     'deskripsi_lomba' => $item->deskripsi_lomba,
                     'waktu_mulai_pengerjaan' => $item->waktu_mulai_pengerjaan,
                     'waktu_akhir_pengerjaan' => $item->waktu_akhir_pengerjaan,
+                    'tanggal_rilis_nilai' => $item->tanggal_rilis_nilai,
                     'total_soal_pg' => $item->soal->count(),
                     'total_soal_essay' => $item->soalEssay->count(),
                     'total_soal_isian' => $item->soalIsianSingkat->count(),
@@ -1898,6 +1900,40 @@ class AdminController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Set tanggal rilis nilai untuk lomba
+     */
+    public function setTanggalRilisNilai(Request $request, $lombaId)
+    {
+        try {
+            $request->validate([
+                'tanggal_rilis_nilai' => 'required|date|after:now'
+            ]);
+
+            $lomba = CabangLomba::findOrFail($lombaId);
+            $lomba->tanggal_rilis_nilai = Carbon::parse($request->tanggal_rilis_nilai, 'Asia/Jakarta');
+            $lomba->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Tanggal rilis nilai berhasil disimpan',
+                'data' => [
+                    'lomba_id' => $lomba->id,
+                    'nama_cabang' => $lomba->nama_cabang,
+                    'tanggal_rilis_nilai' => $lomba->tanggal_rilis_nilai->format('Y-m-d H:i:s'),
+                    'tanggal_rilis_formatted' => $lomba->tanggal_rilis_nilai->format('d F Y, H:i')
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menyimpan tanggal rilis nilai',
                 'error' => $e->getMessage()
             ], 500);
         }
