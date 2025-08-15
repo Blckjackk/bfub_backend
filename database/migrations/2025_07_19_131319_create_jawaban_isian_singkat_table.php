@@ -17,7 +17,7 @@ return new class extends Migration
             $table->unsignedBigInteger('soal_isian_singkat_id');
             $table->string('jawaban_peserta')->nullable();
             $table->boolean('benar')->default(false);
-            $table->decimal('score', 5, 2)->default(0); // Tambah kolom score
+            $table->integer('score')->default(0); // Tambah kolom score
             $table->timestamp('waktu_dijawab')->nullable();
             
             // Foreign key constraints
