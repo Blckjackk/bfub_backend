@@ -101,7 +101,6 @@ Route::post('/admin/token/generate', [AdminController::class, 'generateTokens'])
 Route::put('/admin/token/{id}/primary', [AdminController::class, 'setTokenAsPrimary']); // Set token as primary
 Route::put('/admin/token/{id}/status', [AdminController::class, 'updateTokenStatus']); // Update token status
 Route::delete('/admin/token/{id}', [AdminController::class, 'deleteToken']); // Delete token
-Route::delete('/admin/token/bulk-delete', [AdminController::class, 'deleteBulkTokens']); // Bulk delete tokens
 Route::patch('/admin/token/expire', [AdminController::class, 'markTokensAsExpired']); // Mark tokens as expired
 
 // ================= SOAL MANAGEMENT ROUTES =================
