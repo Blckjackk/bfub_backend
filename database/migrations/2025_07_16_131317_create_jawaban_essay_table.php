@@ -16,7 +16,7 @@ return new class extends Migration
             $table->unsignedBigInteger('peserta_id');
             $table->unsignedBigInteger('soal_essay_id');
             $table->text('jawaban_teks')->nullable();
-            $table->decimal('score', 5, 2)->default(0); // Tambah kolom score
+            $table->integer('score')->default(0); // Tambah kolom score
             
             // Foreign key constraints
             $table->foreign('peserta_id')->references('id')->on('peserta');

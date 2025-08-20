@@ -435,4 +435,97 @@ class PesertaController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Cek status rilis nilai untuk peserta
+     */
+    public function cekStatusRilisNilai(Request $request)
+    {
+        try {
+            $request->validate([
+                'peserta_id' => 'required|exists:peserta,id'
+            ]);
+
+            $peserta = Peserta::with('cabangLomba')->find($request->peserta_id);
+            
+            if (!$peserta || !$peserta->cabangLomba) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Peserta atau cabang lomba tidak ditemukan'
+                ], 404);
+            }
+
+            $cabangLomba = $peserta->cabangLomba;
+            $now = Carbon::now('Asia/Jakarta');
+            
+            // Cek apakah peserta sudah mengerjakan ujian
+            $sudahUjian = $peserta->waktu_mulai && $peserta->waktu_selesai;
+            
+            if (!$sudahUjian) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'status' => 'belum_ujian',
+                        'message' => 'Anda belum melaksanakan ujian',
+                        'nama_lomba' => $cabangLomba->nama_cabang
+                    ]
+                ]);
+            }
+
+            // Cek apakah admin sudah set tanggal rilis
+            if (!$cabangLomba->tanggal_rilis_nilai) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'status' => 'menunggu_admin',
+                        'message' => 'Ujian sudah selesai. Menunggu admin mengatur tanggal rilis nilai',
+                        'nama_lomba' => $cabangLomba->nama_cabang,
+                        'waktu_ujian_selesai' => $peserta->waktu_selesai
+                    ]
+                ]);
+            }
+
+            $tanggalRilis = Carbon::parse($cabangLomba->tanggal_rilis_nilai, 'Asia/Jakarta');
+            
+            // Cek apakah sudah waktunya rilis
+            if ($now->greaterThanOrEqualTo($tanggalRilis)) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'status' => 'nilai_tersedia',
+                        'message' => 'Nilai sudah dirilis dan dapat dilihat',
+                        'nama_lomba' => $cabangLomba->nama_cabang,
+                        'tanggal_rilis' => $tanggalRilis->format('Y-m-d H:i:s')
+                    ]
+                ]);
+            }
+
+            // Belum waktunya rilis - hitung countdown
+            $countdown = $now->diff($tanggalRilis);
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'status' => 'menunggu_rilis',
+                    'message' => 'Ujian sudah selesai. Nilai akan dirilis sesuai jadwal',
+                    'nama_lomba' => $cabangLomba->nama_cabang,
+                    'tanggal_rilis' => $tanggalRilis->format('Y-m-d H:i:s'),
+                    'tanggal_rilis_formatted' => $tanggalRilis->format('d F Y, H:i'),
+                    'countdown' => [
+                        'hari' => $countdown->days,
+                        'jam' => $countdown->h,
+                        'menit' => $countdown->i,
+                        'detik' => $countdown->s
+                    ]
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

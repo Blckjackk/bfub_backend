@@ -11,7 +11,8 @@ class CabangLomba extends Model
         'nama_cabang',
         'deskripsi_lomba',
         'waktu_mulai_pengerjaan',
-        'waktu_akhir_pengerjaan'
+        'waktu_akhir_pengerjaan',
+        'tanggal_rilis_nilai'
     ];
     public $timestamps = true; // Enable timestamps
 
