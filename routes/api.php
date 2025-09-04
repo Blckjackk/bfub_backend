@@ -116,6 +116,7 @@ Route::delete('/admin/soal/isian-singkat/{id}', [AdminController::class, 'delete
 
 // ================= HASIL & NILAI ROUTES =================
 Route::get('/admin/hasil/lomba', [AdminController::class, 'getHasilLomba']); // Get hasil lomba 
+Route::get('/admin/hasil-lomba', [AdminController::class, 'getHasilLomba']); // Get hasil lomba (alternative endpoint)
 Route::get('/admin/hasil/peserta/{id}', [AdminController::class, 'getHasilPeserta']); // Get hasil by peserta ID
 Route::delete('/admin/hasil/peserta/{id}', [AdminController::class, 'deleteHasilPeserta']); // Delete hasil peserta
 Route::get('/peserta/hasil', [PesertaController::class, 'getHasilLomba']); // Get hasil lomba peserta

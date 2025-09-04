@@ -711,6 +711,11 @@ class AdminController extends Controller
             if ($request->has('lomba_id') && !empty($request->lomba_id)) {
                 $query->where('cabang_lomba_id', $request->lomba_id);
             }
+            
+            // Alternative parameter name for compatibility
+            if ($request->has('cabang_lomba_id') && !empty($request->cabang_lomba_id)) {
+                $query->where('cabang_lomba_id', $request->cabang_lomba_id);
+            }
 
             // Search functionality
             if ($request->has('search') && !empty($request->search)) {
@@ -736,6 +741,23 @@ class AdminController extends Controller
 
                 return [
                     'id' => $peserta->id,
+                    'peserta_id' => $peserta->id,
+                    'nama_peserta' => $peserta->nama_lengkap,
+                    'asal_sekolah' => $peserta->asal_sekolah,
+                    'cabang_lomba' => $peserta->cabangLomba->nama_cabang,
+                    'total_score' => round($peserta->nilai_total ?? 0),
+                    'ranking' => null, // Could be calculated if needed
+                    'status_ujian' => $peserta->status_ujian,
+                    'waktu_selesai' => $peserta->waktu_selesai,
+                    'peserta' => [
+                        'nama' => $peserta->nama_lengkap,
+                        'asal_sekolah' => $peserta->asal_sekolah,
+                        'nomor_pendaftaran' => $peserta->nomor_pendaftaran,
+                        'cabang_lomba' => [
+                            'nama_lomba' => $peserta->cabangLomba->nama_cabang
+                        ]
+                    ],
+                    // Legacy fields for backward compatibility
                     'noPendaftaran' => $peserta->nomor_pendaftaran,
                     'nama' => $peserta->nama_lengkap,
                     'cabor' => $peserta->cabangLomba->nama_cabang,
@@ -746,7 +768,6 @@ class AdminController extends Controller
                     'soalBenar' => $jawabanBenar,
                     'soalSalah' => $jawabanSalah,
                     'nilai' => round($peserta->nilai_total ?? 0),
-                    'asal_sekolah' => $peserta->asal_sekolah,
                     'waktu_pengerjaan' => $peserta->waktu_pengerjaan_total,
                     'isChecked' => false
                 ];
